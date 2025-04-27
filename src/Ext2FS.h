@@ -12,6 +12,8 @@
 class Ext2FS {
 public:
     Ext2FS(const std::string& filename);
+    Ext2FS(Ext2FS&& fs);
+
     void mkdir(const std::string& path);
     void create_file(const std::string& path);
     void write_file(const std::string& path, const std::vector<uint8_t>& data);
