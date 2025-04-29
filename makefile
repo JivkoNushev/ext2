@@ -3,7 +3,7 @@ PARAMS = -Wall -Wpedantic -Wextra
 
 BUILD_DIR = build
 SRC_DIR = src
-SRC = ${SRC_DIR}/main.cpp ${SRC_DIR}/ClientInterface.cpp
+SRC = ${SRC_DIR}/main.cpp ${SRC_DIR}/ClientInterface.cpp ${SRC_DIR}/Disk.cpp 
 EXT2_BIN = ${BUILD_DIR}/ext2
 
 .PHONY: clean run
