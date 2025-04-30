@@ -4,17 +4,17 @@
 #include "Disk.h"
 
 
-class SuperBlock
+class SuperBlock : public Block
 {
 public:
-    SuperBlock(); // calls load
+    SuperBlock(uint32_t offset = SUPERBLOCK_OFFSET);
 
     void load(Disk& disk);
     void save(Disk& disk) const;
-    void format(uint32_t total_blocks, uint32_t total_inodes, uint32_t block_size);
+    void format(uint32_t blocks_per_group = 8192, uint32_t inodes_per_group = 2048, uint32_t disk_size = 1 << 24);
 
 private:
-    struct SuperBlockFields
+    struct __attribute__((packed)) SuperBlockFields
     {
         uint32_t s_inodes_count = 0;
         uint32_t s_blocks_count = 0;
@@ -42,10 +42,15 @@ private:
         uint16_t s_def_resuid = 0;
         uint16_t s_def_resgid = 0;
 
+        uint8_t padding[1024 - 84];
     };
 
-    static const uint16_t SUPERBLOCK_MAGIC_BYTES = 0xEF53;
-    static const uint32_t SUPERBLOCK_OFFSET = 1024;
+    struct __attribute__((packed)) SuperBlockType
+    {
+        SuperBlockFields fields;
+    };
+
+    static const uint16_t MAGIC_BYTES = 0xEF53;
 
     SuperBlockFields fields;
 };

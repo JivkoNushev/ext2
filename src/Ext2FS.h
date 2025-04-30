@@ -29,8 +29,8 @@ private:
     void allocate_inode();
     void allocate_block();
 
-    std::fstream disk;
-    SuperBlock superblock;
+    Disk disk;
+    SuperBlock sb;
     std::vector<GroupDescriptor> group_descriptors;
     std::vector<uint8_t> inode_bitmap;
     std::vector<uint8_t> block_bitmap;

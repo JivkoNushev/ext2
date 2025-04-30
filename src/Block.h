@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstdint>
-
-constexpr uint16_t BLOCK_SIZE = 1024;
+#include "config.h"
 
 struct Block
 {
-    uint8_t data[BLOCK_SIZE]{};
+    uint32_t size = BLOCK_SIZE;
+    uint32_t offset = 0;
 };

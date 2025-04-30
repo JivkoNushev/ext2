@@ -1,17 +1,36 @@
 #include "Ext2FS.h"
+#include "Disk.h"
 
-
-Ext2FS::Ext2FS(const std::string& filename)
+Ext2FS::Ext2FS(const std::string& disk_img) :
+    disk(disk_img),
+    sb()
 {
-    std::fstream disk_img(filename);
-    if(disk_img.good())
+    if(this->disk.is_empty())
     {
-        // read contents
-    } 
+        std::cout << "[Log] Formating new ext2 fs.\n";
+        this->format();
+        this->save();
+    }
     else
     {
-        // format new ext2
+        std::cout << "[Log] Loading ext2 fs.\n";
+        this->load();
     }
+}
+
+void Ext2FS::load()
+{
+    this->sb.load(this->disk);
+}
+
+void Ext2FS::format()
+{
+    this->sb.format();
+}
+
+void Ext2FS::save()
+{
+    this->sb.save(this->disk);
 }
 
 
