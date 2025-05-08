@@ -1,21 +1,20 @@
 #pragma once
 
-#include "Ext2FS.h"
+#include "FileSystem.h"
 
 class ClientInterface
 {
 public:
-    ClientInterface(Ext2FS&& fs);
-
+    ClientInterface();
     void run();
+private:
+    static FileSystem::FSType parse_fs_type(const char* buffer);
+
+    static constexpr uint32_t BUFFER_SIZE = 1024;
 
 private:
-    void print_help() const;
+    bool m_running = false;
+    FileSystem m_fs;
 
-    std::string _get_input() const;
-
-
-    Ext2FS fs;
-
-    bool is_running = false;
+    char m_buffer[BUFFER_SIZE]{};
 };

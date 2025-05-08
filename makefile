@@ -1,25 +1,23 @@
 COMPILER = g++
 PARAMS = -Wall -Wpedantic -Wextra
 
-BUILD_DIR = build
-SRC_DIR = src
-SRC = ${SRC_DIR}/main.cpp ${SRC_DIR}/Disk.cpp ${SRC_DIR}/Ext2FS.cpp ${SRC_DIR}/SuperBlock.cpp
+FS_SRC = src/*.cpp
 
-EXT2_BIN = ${BUILD_DIR}/ext2
+EXT2_BIN = build/ext2
+EXT2_SRC = src/ext2/*.cpp ${FS_SRC}
 
-.PHONY: clean run
+.PHONY: clean ext2
 
 all: ${EXT2_BIN}
 
-${EXT2_BIN}: ${SRC}
-	mkdir -p ${BUILD_DIR}
-	${COMPILER} ${PARAMS} -o $@ ${SRC}
-
-
-run: all
+ext2: ${EXT2_BIN}
 	${EXT2_BIN}
+
+${EXT2_BIN}: ${EXT2_SRC}
+	mkdir -p build
+	${COMPILER} ${PARAMS} -o $@ ${EXT2_SRC}
 
 
 clean:
-	rm -rf ${BUILD_DIR}/*
+	rm -rf build/*
 
