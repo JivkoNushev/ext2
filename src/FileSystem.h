@@ -5,7 +5,7 @@
 class FileSystem
 {
 public:
-    enum class FSType : uint8_t { Ext2, ExFAT };
+    enum class FSType : uint8_t { ext2, exFAT };
 
 public:
     FileSystem();

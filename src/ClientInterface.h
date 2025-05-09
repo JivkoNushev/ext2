@@ -8,8 +8,6 @@ public:
     ClientInterface(int argc, char** argv);
     void run();
 private:
-    static FileSystem::FSType parse_fs_type(const char* buffer);
-
     static constexpr uint32_t BUFFER_SIZE = 1024;
 
 private:

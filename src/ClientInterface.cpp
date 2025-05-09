@@ -1,31 +1,68 @@
 #include <exception>
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-#include <unistd.h>
 
 #include "ClientInterface.h"
 #include "FileSystem.h"
 #include "ext2/Ext2.h"
 
-ClientInterface::ClientInterface(int argc, char** argv) :
-    m_running(true)
+ClientInterface::ClientInterface(int argc, char** argv)
 {
-    std::cout << "Enter FS type: ";
-    std::cin >> this->m_buffer;
+    FileSystem::FSType fs_type = FileSystem::FSType::ext2;
+    char* file_path = nullptr;
 
-    FileSystem::FSType type = ClientInterface::parse_fs_type(this->m_buffer);
-
-    std::cout << "Enter FS path: ";
-    std::cin >> this->m_buffer;
-
-    switch (type) 
+    for(int i = 1; i < argc; i++)
     {
-        case FileSystem::FSType::Ext2:
-            this->m_fs = Ext2(this->m_buffer);
+        if(0 == std::strcmp(argv[i], "-h") || 0 == std::strcmp(argv[i], "--help"))
+        {
+            // this->print_help();
+            return;
+        }
+        else if(0 == std::strcmp(argv[i], "-t") || 0 == std::strcmp(argv[i], "--type"))
+        {
+            if(++i >= argc) throw std::invalid_argument("[Error] No File System Provided");
+
+            if(0 == std::strcmp(argv[i], "ext2"))
+            {
+                continue;
+            }
+            else if(0 == std::strcmp(argv[i], "exFAT"))
+            {
+                fs_type = FileSystem::FSType::exFAT;
+            }
+            else
+            {
+                // this->print_usage_t();
+                throw std::invalid_argument("[Error] Invalid File System type");
+            }
+        }
+        else if(0 == std::strcmp(argv[i], "-f") || 0 == std::strcmp(argv[i], "--file"))
+        {
+            if(++i >= argc) throw std::invalid_argument("[Error] No File Path provided");
+
+            if(!std::ifstream(argv[i]).good()) throw std::invalid_argument("[Error] Invalid File Path");
+
+            file_path = new char[std::strlen(argv[i] + 1)];
+            if(!file_path) throw std::runtime_error("[Error] Insufficient Memory");
+            std::strcpy(file_path, argv[i]);
+        }
+    }
+
+    if(!file_path)
+    {
+        // this->print_usage_f();
+        throw std::invalid_argument("[Error] No FS device file provided");
+    }
+
+    switch (fs_type) 
+    {
+        case FileSystem::FSType::ext2:
+            this->m_fs = Ext2(std::move(file_path));
             break;
-        case FileSystem::FSType::ExFAT:
+        case FileSystem::FSType::exFAT:
             std::cout << "Not implemented\n";
             this->m_running = false;
             break;
@@ -34,6 +71,8 @@ ClientInterface::ClientInterface(int argc, char** argv) :
             this->m_running = false;
             break;
     }
+
+    this->m_running = true;
 }
 
 
@@ -48,19 +87,4 @@ void ClientInterface::run()
             this->m_running = false;
         }
     }
-}
-
-
-FileSystem::FSType ClientInterface::parse_fs_type(const char* buffer)
-{
-    if(0 == std::strcmp(buffer, "ext2"))
-    {
-        return FileSystem::FSType::Ext2;
-    }
-    else if(0 == std::strcmp(buffer, "exfat"))
-    {
-        return FileSystem::FSType::ExFAT;
-    }
-
-    throw std::invalid_argument("Couldn't parse FS type");
 }

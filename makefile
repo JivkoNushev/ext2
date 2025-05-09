@@ -12,7 +12,7 @@ EXT2_SRC = src/ext2/*.cpp ${FS_SRC}
 all:
 
 ext2: ${EXT2_IMG} ${EXT2_BIN}
-	${EXT2_BIN}
+	${EXT2_BIN} -f build/ext2.img
 
 ${EXT2_IMG}:
 	sudo dd if=/dev/zero of=build/ext2.img bs=1K count=1K
