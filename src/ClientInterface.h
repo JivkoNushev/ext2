@@ -5,7 +5,7 @@
 class ClientInterface
 {
 public:
-    ClientInterface();
+    ClientInterface(int argc, char** argv);
     void run();
 private:
     static FileSystem::FSType parse_fs_type(const char* buffer);

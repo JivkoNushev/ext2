@@ -3,42 +3,36 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <unistd.h>
 
 #include "ClientInterface.h"
 #include "FileSystem.h"
 #include "ext2/Ext2.h"
 
-ClientInterface::ClientInterface() :
+ClientInterface::ClientInterface(int argc, char** argv) :
     m_running(true)
 {
-    try
+    std::cout << "Enter FS type: ";
+    std::cin >> this->m_buffer;
+
+    FileSystem::FSType type = ClientInterface::parse_fs_type(this->m_buffer);
+
+    std::cout << "Enter FS path: ";
+    std::cin >> this->m_buffer;
+
+    switch (type) 
     {
-        std::cout << "Enter FS type: ";
-        std::cin >> this->m_buffer;
-
-        FileSystem::FSType type = ClientInterface::parse_fs_type(this->m_buffer);
-
-        std::cout << "Enter FS path: ";
-        std::cin >> this->m_buffer;
-
-        switch (type) 
-        {
-            case FileSystem::FSType::Ext2:
-                this->m_fs = Ext2(this->m_buffer);
-                break;
-            case FileSystem::FSType::ExFAT:
-                std::cout << "Not implemented\n";
-                this->m_running = false;
-                break;
-            default:
-                std::cout << "Invalid FS Type\n";
-                this->m_running = false;
-                break;
-        }
-    }
-    catch(std::invalid_argument)
-    {
-        this->m_running = false;
+        case FileSystem::FSType::Ext2:
+            this->m_fs = Ext2(this->m_buffer);
+            break;
+        case FileSystem::FSType::ExFAT:
+            std::cout << "Not implemented\n";
+            this->m_running = false;
+            break;
+        default:
+            std::cout << "Invalid FS Type\n";
+            this->m_running = false;
+            break;
     }
 }
 
