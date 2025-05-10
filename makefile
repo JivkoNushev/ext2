@@ -7,9 +7,9 @@ EXT2_IMG = build/ext2.img
 EXT2_BIN = build/ext2
 EXT2_SRC = src/ext2/*.cpp ${FS_SRC}
 
-.PHONY: clean ext2 ext2_img
+.PHONY: clean ext2
 
-all:
+all: ${EXT2_IMG} ${EXT2_BIN}
 
 ext2: ${EXT2_IMG} ${EXT2_BIN}
 	${EXT2_BIN} -f build/ext2.img

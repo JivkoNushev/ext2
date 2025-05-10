@@ -1,5 +1,5 @@
-#include <stdexcept>
 #include <iostream>
+#include <exception>
 
 #include "ClientInterface.h"
 
@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     {
         ClientInterface(argc, argv).run();
     }
-    catch(const std::invalid_argument& e)
+    catch(const std::exception& e)
     {
         std::cerr << e.what() << '\n';
     }
