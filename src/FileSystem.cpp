@@ -6,8 +6,9 @@
 
 FileSystem::FileSystem() {}
 
-FileSystem::FileSystem(FSType type, const char* device_path) : 
-    m_type(type)
+FileSystem::FileSystem(const char* device_path, FSType type, bool format) :
+    m_type(type),
+    m_format(format)
 {
     this->m_device_path = new char[std::strlen(device_path) + 1];
     if(!device_path) return;

@@ -9,7 +9,7 @@ public:
 
 public:
     FileSystem();
-    FileSystem(FSType type, const char* device_path);
+    FileSystem(const char* device_path, FSType type, bool format);
     virtual ~FileSystem();
 
     FileSystem(const FileSystem& fs);
@@ -24,6 +24,7 @@ private:
     void _copy_from(const FileSystem& fs);
     void _move_from(FileSystem&& fs);
 
-    FSType m_type;
     char* m_device_path = nullptr;
+    FSType m_type;
+    bool m_format = false;
 };

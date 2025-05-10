@@ -6,7 +6,7 @@
 class Ext2 : public FileSystem
 {
 public:
-    Ext2(const char* device_path);
+    Ext2(const char* device_path, bool format);
     ~Ext2() = default;
 
 private:
