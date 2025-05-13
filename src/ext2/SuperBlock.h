@@ -8,21 +8,27 @@ class SuperBlock : public Block
 {
 public:
     SuperBlock();
+    SuperBlock(uint32_t size, uint32_t offset);
     ~SuperBlock() = default;
  
     uint32_t read(const char* file) override;
     uint32_t write(const char* file) const override;
+
+    void load();
+
+    uint16_t get_bg_count() const;
 
     uint32_t get_inodes_count() const;
     uint32_t get_blocks_count() const;
 
     void print_fields() const;
 
-private:
+public:
     static constexpr const uint16_t SB_OFFSET = 1024;
     static constexpr const uint16_t SB_SIZE = 1024;
 
-    struct SuperBlockDiskFields
+private:
+    struct SuperBlockFields
     {
         uint32_t s_inodes_count = 0;
         uint32_t s_blocks_count = 0;
@@ -52,6 +58,8 @@ private:
     };
 
 private:
-    SuperBlockDiskFields fields;
 
+    SuperBlockFields m_fields;
+
+    uint16_t m_bg_count = 0;
 };

@@ -11,7 +11,8 @@ public:
     virtual uint32_t read(const char* file) = 0;
     virtual uint32_t write(const char* file) const = 0;
 
-private:
+public:
     uint32_t m_size = 0;
     uint32_t m_offset = 0;
+
 };
