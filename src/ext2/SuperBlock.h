@@ -62,27 +62,27 @@ private:
         uint32_t s_feature_compat = 0;
         uint32_t s_feature_incompat = 0;
         uint32_t s_feature_ro_compat = 0;
-        uint8_t s_uuid[16]{};
-        uint8_t s_volume_name[16]{};
-        uint8_t s_last_mounted[64]{};
+        uint8_t  s_uuid[16]{};
+        uint8_t  s_volume_name[16]{};
+        uint8_t  s_last_mounted[64]{};
         uint32_t s_algo_bitmap = 0;
         // Performance Hints
-        uint8_t s_prealloc_blocks = 0;
-        uint8_t s_prealloc_dir_blocks = 0;
-        uint8_t _s_perf_hints_allignment[2]{};
+        uint8_t  s_prealloc_blocks = 0;
+        uint8_t  s_prealloc_dir_blocks = 0;
+        uint8_t  _s_perf_hints_allignment[2]{};
         // Journaling Support
-        uint8_t s_journal_uuid[16]{};
+        uint8_t  s_journal_uuid[16]{};
         uint32_t s_journal_inum = 0;
         uint32_t s_journal_dev = 0;
         uint32_t s_last_orphan = 0;
         // Directory Indexing Support
         uint32_t s_hash_seed[4]{};
-        uint8_t s_def_hash_version = 0;
-        uint8_t _s_dir_ind_sup_allignment[3]{};
+        uint8_t  s_def_hash_version = 0;
+        uint8_t  _s_dir_ind_sup_allignment[3]{};
         // Other options
         uint32_t s_default_mount_options = 0;
         uint32_t s_first_meta_bg = 0;
-        uint8_t _s_reserved_for_future_rev[760]{};
+        uint8_t  _s_reserved_for_future_rev[760]{};
     };
 
 private:

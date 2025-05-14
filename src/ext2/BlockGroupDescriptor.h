@@ -29,7 +29,7 @@ private:
         uint16_t bg_free_inodes_count = 0;
         uint16_t bg_used_dirs_count = 0;
         uint16_t bg_pad = 0;
-        uint32_t bg_reserved[3]{};
+        uint8_t  bg_reserved[12]{};
     };
 
 private:

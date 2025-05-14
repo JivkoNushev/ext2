@@ -29,7 +29,7 @@ private:
         uint32_t i_file_acl = 0;
         uint32_t i_dir_acl = 0;
         uint32_t i_faddr = 0;
-        uint32_t i_osd2[3]{};
+        uint8_t  i_osd2[12]{};
     };
 
     InodeFields m_fields;
