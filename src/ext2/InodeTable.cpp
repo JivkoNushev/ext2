@@ -11,7 +11,7 @@ InodeTable::InodeTable() :
 InodeTable::InodeTable(const SuperBlock& sb, const BlockGroupDescriptorTable& bgdt, uint16_t bg) :
     Block(sb.get_inodes_count() * Inode::I_SIZE, sb.get_block_size() * bgdt.get_inode_table(bg))
 {
-    this->m_i_count = sb.get_bg_count();
+    this->m_i_count = sb.get_inodes_count();
     this->m_table = new Inode[this->m_i_count];
 
     for(uint16_t i = 0; i < this->m_i_count; i++)
@@ -64,8 +64,8 @@ uint32_t InodeTable::read(const char* file)
 {
     for(uint16_t i = 0; i < this->m_i_count; i++)
     {
-        Inode& bgd = this->m_table[i];
-        bgd.read(file);
+        Inode& inode = this->m_table[i];
+        inode.read(file);
     }
 
     return this->m_size;
