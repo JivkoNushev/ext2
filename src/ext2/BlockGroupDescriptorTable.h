@@ -1,12 +1,13 @@
 #pragma once
 
 #include "BlockGroupDescriptor.h"
+#include "SuperBlock.h"
 
 class BlockGroupDescriptorTable : Block
 {
 public:
     BlockGroupDescriptorTable();
-    BlockGroupDescriptorTable(uint32_t size, uint32_t offset, uint16_t gd_count);
+    BlockGroupDescriptorTable(const SuperBlock& sb, uint16_t bg);
     ~BlockGroupDescriptorTable();
 
     BlockGroupDescriptorTable(const BlockGroupDescriptorTable& table);
@@ -19,6 +20,8 @@ public:
     uint32_t write(const char* file) const override;
 
     void print_fields() const;
+
+    uint16_t get_inode_table(uint16_t bg) const;
 
 public:
     static constexpr const uint16_t BGDT_OFFSET = 2048;

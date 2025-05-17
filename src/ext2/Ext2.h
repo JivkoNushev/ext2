@@ -3,6 +3,7 @@
 #include "../FileSystem.h"
 #include "SuperBlock.h"
 #include "BlockGroupDescriptorTable.h"
+#include "InodeTable.h"
 
 class Ext2 : public FileSystem
 {
@@ -16,4 +17,5 @@ private:
 
     SuperBlock m_sb;
     BlockGroupDescriptorTable m_bgdt;
+    InodeTable m_it;
 };

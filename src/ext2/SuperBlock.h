@@ -17,7 +17,9 @@ public:
     void load();
 
     uint16_t get_bg_count() const;
+    uint32_t get_block_size() const;
 
+    uint32_t get_blocks_per_group() const;
     uint32_t get_inodes_count() const;
     uint32_t get_blocks_count() const;
 

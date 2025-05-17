@@ -9,6 +9,14 @@ public:
     Inode(uint32_t size, uint32_t offset);
     ~Inode() = default;
 
+    uint32_t read(const char* file) override;
+    uint32_t write(const char* file) const override;
+
+    void print_fields() const;
+
+public:
+    static constexpr const uint16_t I_SIZE = 128;
+
 private:
     struct InodeFields
     {
@@ -33,5 +41,4 @@ private:
     };
 
     InodeFields m_fields;
-
 };

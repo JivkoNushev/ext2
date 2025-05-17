@@ -1,5 +1,7 @@
 #include "BlockGroupDescriptorTable.h"
 #include "BlockGroupDescriptor.h"
+
+#include <iostream>
 #include <stdexcept>
 
 BlockGroupDescriptorTable::BlockGroupDescriptorTable() :
@@ -7,12 +9,11 @@ BlockGroupDescriptorTable::BlockGroupDescriptorTable() :
 {}
 
 
-BlockGroupDescriptorTable::BlockGroupDescriptorTable(uint32_t size, uint32_t offset, uint16_t gd_count) :
-    Block(size, offset),
-    m_gd_count(gd_count)
+BlockGroupDescriptorTable::BlockGroupDescriptorTable(const SuperBlock& sb, uint16_t bg) :
+    Block(sb.get_bg_count() * BlockGroupDescriptor::GD_SIZE, BlockGroupDescriptorTable::BGDT_OFFSET)
 {
+    this->m_gd_count = sb.get_bg_count();
     this->m_table = new BlockGroupDescriptor[this->m_gd_count];
-    if(!this->m_table) throw std::runtime_error("[Error] Insufficient Memory");
 
     for(uint16_t i = 0; i < this->m_gd_count; i++)
     {
@@ -85,8 +86,14 @@ void BlockGroupDescriptorTable::print_fields() const
 {
     for(uint16_t i = 0; i < this->m_gd_count; i++)
     {
+        std::cout << "Group " << i << ":\n";
         this->m_table[i].print_fields();
     }
+}
+
+uint16_t BlockGroupDescriptorTable::get_inode_table(uint16_t bg) const
+{
+    return this->m_table[bg].get_inode_table();
 }
 
 void BlockGroupDescriptorTable::free()

@@ -13,10 +13,10 @@ public:
     virtual ~FileSystem();
 
     FileSystem(const FileSystem& fs);
-    FileSystem(FileSystem&& fs);
+    FileSystem(FileSystem&& fs) noexcept;
 
     FileSystem& operator=(const FileSystem& fs);
-    FileSystem& operator=(FileSystem&& fs);
+    FileSystem& operator=(FileSystem&& fs) noexcept;
 
     const char* get_device_path() const;
 private:

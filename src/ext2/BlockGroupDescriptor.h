@@ -16,6 +16,8 @@ public:
 
     void print_fields() const;
 
+    uint32_t get_inode_table() const;
+
 public:
     static constexpr const uint16_t GD_SIZE = 32;
 
@@ -33,6 +35,5 @@ private:
     };
 
 private:
-    BlockGroupDescriptorFields fields;
-
+    BlockGroupDescriptorFields m_fields;
 };

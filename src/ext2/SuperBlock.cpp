@@ -39,6 +39,16 @@ uint16_t SuperBlock::get_bg_count() const
     return this->m_bg_count;
 }
 
+uint32_t SuperBlock::get_block_size() const
+{
+    return 1024 << this->m_fields.s_log_block_size;
+}
+
+uint32_t SuperBlock::get_blocks_per_group() const
+{
+    return this->m_fields.s_blocks_per_group;
+}
+
 uint32_t SuperBlock::get_inodes_count() const
 {
     return this->m_fields.s_inodes_count;

@@ -2,7 +2,6 @@
 #include <stdexcept>
 
 #include "Ext2.h"
-#include "BlockGroupDescriptor.h"
 #include "BlockGroupDescriptorTable.h"
 #include "SuperBlock.h"
 
@@ -21,6 +20,7 @@ Ext2::Ext2(const char* device_path, bool format) :
 
     this->m_sb.print_fields();
     this->m_bgdt.print_fields();
+    this->m_it.print_fields();
 }
 
 void Ext2::format_ext2() const
@@ -36,6 +36,9 @@ void Ext2::load_ext2()
     this->m_sb.read(this->get_device_path());
     this->m_sb.load();
 
-    this->m_bgdt = BlockGroupDescriptorTable(this->m_sb.get_bg_count() * BlockGroupDescriptor::GD_SIZE, BlockGroupDescriptorTable::BGDT_OFFSET, this->m_sb.get_bg_count());
+    this->m_bgdt = BlockGroupDescriptorTable(this->m_sb, 0);
     this->m_bgdt.read(this->get_device_path());
+
+    this->m_it = InodeTable(this->m_sb, this->m_bgdt, 0);
+    this->m_it.read(this->get_device_path());
 }
