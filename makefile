@@ -15,9 +15,11 @@ ext2: ${EXT2_IMG} ${EXT2_BIN}
 	${EXT2_BIN} -d build/ext2.img
 
 ${EXT2_IMG}:
+	mkdir -p build
 	sudo dd if=/dev/zero of=build/ext2.img bs=1K count=1K
 	sudo mkfs -t ext2 build/ext2.img
 	sudo losetup -f build/ext2.img
+	sudo mkdir -p /mnt/EXT2
 	sudo mount /dev/loop0 /mnt/EXT2
 
 	sudo mkdir -p /mnt/EXT2/dir1/dir2
