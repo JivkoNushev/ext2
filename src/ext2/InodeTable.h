@@ -23,6 +23,8 @@ public:
 
     void print_fields() const;
 
+    Inode& get_inode(uint32_t index);
+
 public:
     static constexpr const uint16_t I_OFFSET = 2048;
 

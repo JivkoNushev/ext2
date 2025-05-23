@@ -44,6 +44,11 @@ uint32_t SuperBlock::get_block_size() const
     return 1024 << this->m_fields.s_log_block_size;
 }
 
+uint32_t SuperBlock::get_inode_size() const
+{
+    return this->m_fields.s_inode_size;
+}
+
 uint32_t SuperBlock::get_blocks_per_group() const
 {
     return this->m_fields.s_blocks_per_group;

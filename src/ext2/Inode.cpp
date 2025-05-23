@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 #include "Inode.h"
 
@@ -50,3 +51,14 @@ void Inode::print_fields() const
     std::cout << "i_osd2: "                         << this->m_fields.i_osd2 << '\n';
 }
 
+uint32_t Inode::get_block(uint32_t index) const
+{
+    if(index >= 15) throw std::out_of_range("[Error] Invalid i_block index");
+
+    return this->m_fields.i_block[index];
+}
+
+uint16_t Inode::get_mode() const
+{
+    return this->m_fields.i_mode;
+}
