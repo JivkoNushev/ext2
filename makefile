@@ -29,6 +29,7 @@ ${EXT2_IMG}:
 
 	sudo umount /mnt/EXT2
 	sudo losetup -d /dev/loop0
+	sudo chown $(shell id -u):$(shell id -g) build/ext2.img
 
 ${EXT2_BIN}: ${EXT2_SRC}
 	mkdir -p build
