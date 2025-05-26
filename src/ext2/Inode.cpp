@@ -1,6 +1,4 @@
-#include <fstream>
 #include <iostream>
-#include <stdexcept>
 
 #include "Inode.h"
 
@@ -11,23 +9,6 @@ Inode::Inode() :
 Inode::Inode(uint32_t size, uint32_t offset) :
     Block(size, offset)
 {}
-
-uint32_t Inode::read(const char* file_name) 
-{
-    std::ifstream ifs(file_name);
-    ifs.seekg(this->m_offset, std::ios_base::beg);
-    ifs.read((char*)&this->m_fields, sizeof(this->m_fields));
-
-    return sizeof(this->m_fields);
-}
-
-uint32_t Inode::write(const char* file) const
-{
-    (void)file;
-
-    //TODO: Implement
-    return 0;
-}
 
 void Inode::print_fields() const
 {
@@ -51,14 +32,31 @@ void Inode::print_fields() const
     std::cout << "i_osd2: "                         << this->m_fields.i_osd2 << '\n';
 }
 
-uint32_t Inode::get_block(uint32_t index) const
+void Inode::init(bool is_directory, uint32_t block_size, uint32_t new_block_num)
 {
-    if(index >= 15) throw std::out_of_range("[Error] Invalid i_block index");
-
-    return this->m_fields.i_block[index];
+    uint16_t mode = is_directory ? (Inode::Mode::EXT2_S_IFDIR | 0755) : (Inode::Mode::EXT2_S_IFREG | 0644);
+    this->m_fields.i_mode = mode;
+    this->m_fields.i_size = is_directory ? block_size : 0;
+    this->m_fields.i_block[0] = new_block_num;
+    this->m_fields.i_blocks = (block_size + 511) / 512;
+    this->m_fields.i_links_count = is_directory ? 2 : 1;
+    this->set_times_now();
 }
 
-uint16_t Inode::get_mode() const
+void Inode::set_times_now()
 {
-    return this->m_fields.i_mode;
+    this->m_fields.i_atime = time(nullptr);
+    this->m_fields.i_ctime = time(nullptr);
+    this->m_fields.i_mtime = time(nullptr);
+    this->m_fields.i_dtime = 0;
+}
+
+void* Inode::get_fields_buffer_for_read()
+{
+    return &this->m_fields;
+}
+
+const void* Inode::get_fields_buffer_for_write() const
+{
+    return &this->m_fields;
 }

@@ -5,6 +5,7 @@
 class Inode : public Block
 {
 public:
+// ---------------- PUBLIC TYPES ----------------
     enum Mode : uint16_t
     {
         // -- file format --
@@ -30,21 +31,18 @@ public:
         EXT2_S_IWOTH  = 0x0002, // others write
         EXT2_S_IXOTH  = 0x0001  // others execute
     };
-public:
-    Inode();
-    Inode(uint32_t size, uint32_t offset);
-    ~Inode() = default;
 
-    uint32_t read(const char* file) override;
-    uint32_t write(const char* file) const override;
+    enum Reserved
+    {
+        EXT2_BAD_INO                    = 1, // bad blocks inode
+        EXT2_ROOT_INO                   = 2, // root directory inode
+        EXT2_ACL_IDX_INO                = 3, // ACL index inode (deprecated?)
+        EXT2_ACL_DATA_INO               = 4, // ACL data inode (deprecated?)
+        EXT2_BOOT_LOADER_INO            = 5, // boot loader inode
+        EXT2_UNDEL_DIR_INO              = 6  // undelete directory inode
+    };
 
-    void print_fields() const;
-
-    uint32_t get_block(uint32_t index) const;
-    uint16_t get_mode() const;
-
-private:
-    struct InodeFields
+    struct Fields
     {
         uint16_t i_mode = 0;
         uint16_t i_uid = 0;
@@ -66,5 +64,22 @@ private:
         uint8_t  i_osd2[12]{};
     };
 
-    InodeFields m_fields;
+// ---------------- PUBLIC VARIABLES ----------------
+    Fields m_fields;
+
+// ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
+    Inode();
+    Inode(uint32_t size, uint32_t offset);
+    ~Inode() = default;
+
+// ---------------- PUBLIC METHODS ----------------
+    void print_fields() const;
+
+    void init(bool is_directory, uint32_t block_size, uint32_t new_block_num);
+    void set_times_now();
+
+protected:
+// ---------------- PROTECTED METHODS ----------------
+    void* get_fields_buffer_for_read() override;
+    const void* get_fields_buffer_for_write() const override;
 };
