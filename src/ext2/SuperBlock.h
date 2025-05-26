@@ -1,15 +1,12 @@
 #pragma once
 
-#include <cstdint>
-
 #include "Block.h"
 
 class SuperBlock : public Block
 {
 public:
 // ---------------- PUBLIC CONSTANTS ----------------
-    static constexpr const uint16_t SB_OFFSET = 1024;
-    static constexpr const uint16_t SB_SIZE = 1024;
+    static constexpr const uint16_t OFFSET = 1024;
 
 // ---------------- PUBLIC TYPES ----------------
     struct Fields
@@ -73,19 +70,20 @@ public:
     Fields m_fields;
 
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
-    SuperBlock();
-    SuperBlock(uint32_t size, uint32_t offset);
-    SuperBlock(uint32_t size, uint32_t offset, const char* device_path);
+    SuperBlock(uint32_t offset = SuperBlock::OFFSET);
+    SuperBlock(const char* device_path, uint32_t offset = SuperBlock::OFFSET);
     ~SuperBlock() = default;
  
 // ---------------- PUBLIC METHODS ----------------
-    uint32_t read(const char* file) override;
-    uint32_t write(const char* file) const override;
+    void print_fields() const;
 
     uint16_t get_bg_count() const;
     uint32_t get_block_size() const;
 
-    void print_fields() const;
+protected:
+// ---------------- PROTECTED VIRTUAL METHODS ----------------
+    void* get_fields_buffer_for_read() override;
+    const void* get_fields_buffer_for_write() const override;
 
 private:
 // ---------------- PRIVATE VARIABLES ----------------
