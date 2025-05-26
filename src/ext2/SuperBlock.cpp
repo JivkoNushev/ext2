@@ -5,63 +5,90 @@
 #include "SuperBlock.h"
 
 SuperBlock::SuperBlock() :
-    Block(SB_OFFSET, SB_SIZE)
+    Block(SB_SIZE, SB_OFFSET)
 {}
 
 SuperBlock::SuperBlock(uint32_t size, uint32_t offset) :
     Block(size, offset)
 {}
 
-uint32_t SuperBlock::read(const char* file_name) 
+SuperBlock::SuperBlock(uint32_t size, uint32_t offset, const char* device_path) :
+    Block(size, offset)
 {
-    std::ifstream ifs(file_name);
-    ifs.seekg(this->m_offset, std::ios_base::beg);
-    ifs.read((char*)&this->m_fields, sizeof(this->m_fields));
+    this->read(device_path);
 
+    this->m_block_group_count = this->m_fields.s_blocks_count / this->m_fields.s_blocks_per_group + (this->m_fields.s_blocks_count % this->m_fields.s_blocks_per_group != 0);
+    this->m_block_size = 1024 << this->m_fields.s_log_block_size;
+}
+
+uint32_t SuperBlock::read(const char* file_name)
+{
+    std::ifstream ifs(file_name, std::ios::binary);
+
+    if (!ifs.is_open())
+    {
+        std::cerr << "[Error] Failed to open device " << file_name << " for reading SuperBlock.\n";
+        throw std::runtime_error("Failed to open device for SuperBlock read");
+    }
+
+    ifs.seekg(this->m_offset, std::ios_base::beg);
+    if (ifs.fail())
+    {
+        std::cerr << "[Error] Failed to seek to offset " << this->m_offset << " for reading SuperBlock in file " << file_name << '\n';
+        ifs.close();
+        throw std::runtime_error("Failed to seek in SuperBlock read");
+    }
+
+    ifs.read((char*)(&this->m_fields), sizeof(this->m_fields));
+    if (ifs.fail())
+    {
+        std::cerr << "[Error] Failed to read SuperBlock data from file " << file_name << '\n';
+        ifs.close();
+        throw std::runtime_error("Failed to read SuperBlock data");
+    }
+
+    ifs.close();
     return sizeof(this->m_fields);
 }
 
-uint32_t SuperBlock::write(const char* file) const
+uint32_t SuperBlock::write(const char* file_name) const
 {
-    (void)file;
+    std::fstream fs(file_name, std::ios::binary | std::ios::in | std::ios::out);
+    if (!fs.is_open())
+    {
+        std::cerr << "[Error] Failed to open device " << file_name << " for writing SuperBlock.\n";
+        throw std::runtime_error("Failed to open device for SuperBlock write");
+    }
 
-    //TODO: Implement
-    return 0;
-}
+    fs.seekp(this->m_offset, std::ios_base::beg);
+    if (fs.fail())
+    {
+        std::cerr << "[Error] Failed to seek to offset " << this->m_offset << " for reading SuperBlock in file " << file_name << '\n';
+        fs.close();
+        throw std::runtime_error("Failed to seek in SuperBlock read");
+    }
 
-void SuperBlock::load()
-{
-    this->m_bg_count = this->m_fields.s_blocks_count / this->m_fields.s_blocks_per_group + (this->m_fields.s_blocks_count % this->m_fields.s_blocks_per_group != 0);
+    fs.write((const char*)(&this->m_fields), sizeof(this->m_fields));
+    if (fs.fail())
+    {
+        std::cerr << "Error: Failed to read SuperBlock data from file " << file_name << '\n';
+        fs.close();
+        throw std::runtime_error("Failed to read SuperBlock data");
+    }
+
+    fs.flush();
+    fs.close();
+    return sizeof(this->m_fields);
 }
 
 uint16_t SuperBlock::get_bg_count() const
 {
-    return this->m_bg_count;
+    return this->m_block_group_count;
 }
 
 uint32_t SuperBlock::get_block_size() const
 {
-    return 1024 << this->m_fields.s_log_block_size;
-}
-
-uint32_t SuperBlock::get_inode_size() const
-{
-    return this->m_fields.s_inode_size;
-}
-
-uint32_t SuperBlock::get_blocks_per_group() const
-{
-    return this->m_fields.s_blocks_per_group;
-}
-
-uint32_t SuperBlock::get_inodes_count() const
-{
-    return this->m_fields.s_inodes_count;
-}
-
-uint32_t SuperBlock::get_blocks_count() const
-{
-    return this->m_fields.s_blocks_count;
+    return this->m_block_size;
 }
 
 void SuperBlock::print_fields() const 
@@ -120,4 +147,3 @@ void SuperBlock::print_fields() const
     std::cout << "s_first_meta_bg: "                    << this->m_fields.s_first_meta_bg << '\n';
     std::cout << "_s_reserved_for_future_rev: "         << this->m_fields._s_reserved_for_future_rev << '\n';
 }
-

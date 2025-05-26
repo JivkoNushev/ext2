@@ -7,31 +7,12 @@
 class SuperBlock : public Block
 {
 public:
-    SuperBlock();
-    SuperBlock(uint32_t size, uint32_t offset);
-    ~SuperBlock() = default;
- 
-    uint32_t read(const char* file) override;
-    uint32_t write(const char* file) const override;
-
-    void load();
-
-    uint16_t get_bg_count() const;
-    uint32_t get_block_size() const;
-    uint32_t get_inode_size() const;
-
-    uint32_t get_blocks_per_group() const;
-    uint32_t get_inodes_count() const;
-    uint32_t get_blocks_count() const;
-
-    void print_fields() const;
-
-public:
+// ---------------- PUBLIC CONSTANTS ----------------
     static constexpr const uint16_t SB_OFFSET = 1024;
     static constexpr const uint16_t SB_SIZE = 1024;
 
-private:
-    struct SuperBlockFields
+// ---------------- PUBLIC TYPES ----------------
+    struct Fields
     {
         uint32_t s_inodes_count = 0;
         uint32_t s_blocks_count = 0;
@@ -88,9 +69,26 @@ private:
         uint8_t  _s_reserved_for_future_rev[760]{};
     };
 
+// ---------------- PUBLIC VARIABLES ----------------
+    Fields m_fields;
+
+// ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
+    SuperBlock();
+    SuperBlock(uint32_t size, uint32_t offset);
+    SuperBlock(uint32_t size, uint32_t offset, const char* device_path);
+    ~SuperBlock() = default;
+ 
+// ---------------- PUBLIC METHODS ----------------
+    uint32_t read(const char* file) override;
+    uint32_t write(const char* file) const override;
+
+    uint16_t get_bg_count() const;
+    uint32_t get_block_size() const;
+
+    void print_fields() const;
+
 private:
-
-    SuperBlockFields m_fields;
-
-    uint16_t m_bg_count = 0;
+// ---------------- PRIVATE VARIABLES ----------------
+    uint16_t m_block_group_count = 0;
+    uint32_t m_block_size = 0;
 };
