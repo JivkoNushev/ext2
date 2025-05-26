@@ -1,23 +1,24 @@
-#include "BlockGroupDescriptorTable.h"
-#include "BlockGroupDescriptor.h"
-
 #include <iostream>
-#include <stdexcept>
+
+#include "BlockGroupDescriptorTable.h"
+
 
 BlockGroupDescriptorTable::BlockGroupDescriptorTable() :
     Block(0, 0)
 {}
 
-
 BlockGroupDescriptorTable::BlockGroupDescriptorTable(const SuperBlock& sb, uint16_t bg) :
-    Block(sb.get_bg_count() * BlockGroupDescriptor::GD_SIZE, BlockGroupDescriptorTable::BGDT_OFFSET)
+    Block(sb.get_bg_count() * sizeof(BlockGroupDescriptor::Fields), BlockGroupDescriptorTable::OFFSET)
 {
+    //TODO: Use to initalize bgdt in another bg
+    (void)bg;
+
     this->m_gd_count = sb.get_bg_count();
     this->m_table = new BlockGroupDescriptor[this->m_gd_count];
 
     for(uint16_t i = 0; i < this->m_gd_count; i++)
     {
-        this->m_table[i] = BlockGroupDescriptor(BlockGroupDescriptor::GD_SIZE, i * BlockGroupDescriptor::GD_SIZE + this->m_offset);
+        this->m_table[i] = BlockGroupDescriptor(sizeof(BlockGroupDescriptor::Fields), i * sizeof(BlockGroupDescriptor::Fields) + this->m_offset);
     }
 }
 
@@ -61,27 +62,6 @@ BlockGroupDescriptorTable& BlockGroupDescriptorTable::operator=(BlockGroupDescri
     return *this;
 }
 
-uint32_t BlockGroupDescriptorTable::read(const char* file)
-{
-    for(uint16_t i = 0; i < this->m_gd_count; i++)
-    {
-        BlockGroupDescriptor& bgd = this->m_table[i];
-        bgd.read(file);
-    }
-
-    return this->m_size;
-}
-
-uint32_t BlockGroupDescriptorTable::write(const char* file) const
-{
-    for(uint16_t i = 0; i < this->m_gd_count; i++)
-    {
-        this->m_table[i].write(file);
-    }
-
-    return this->m_size;
-}
-
 void BlockGroupDescriptorTable::print_fields() const
 {
     for(uint16_t i = 0; i < this->m_gd_count; i++)
@@ -91,9 +71,41 @@ void BlockGroupDescriptorTable::print_fields() const
     }
 }
 
-uint16_t BlockGroupDescriptorTable::get_inode_table(uint16_t bg) const
+uint32_t BlockGroupDescriptorTable::read(const char* file)
 {
-    return this->m_table[bg].get_inode_table();
+    uint32_t total_size = 0;
+    for(uint16_t i = 0; i < this->m_gd_count; i++)
+    {
+        total_size += this->m_table[i].read(file);
+    }
+
+    return total_size;
+}
+
+uint32_t BlockGroupDescriptorTable::write(const char* file) const
+{
+    uint32_t total_size = 0;
+    for(uint16_t i = 0; i < this->m_gd_count; i++)
+    {
+        total_size += this->m_table[i].write(file);
+    }
+
+    return total_size;
+}
+
+uint32_t BlockGroupDescriptorTable::write_bgd(const char* file, uint16_t index) const
+{
+    return this->m_table[index].write(file);
+}
+
+BlockGroupDescriptor& BlockGroupDescriptorTable::get_bgd(uint32_t group_num)
+{
+    return this->m_table[group_num];
+}
+
+const BlockGroupDescriptor& BlockGroupDescriptorTable::get_bgd(uint32_t group_num) const
+{
+    return this->m_table[group_num];
 }
 
 void BlockGroupDescriptorTable::free()

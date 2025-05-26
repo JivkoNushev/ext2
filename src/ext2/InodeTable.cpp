@@ -69,22 +69,24 @@ void InodeTable::print_fields(uint16_t inode_count) const
 
 uint32_t InodeTable::read(const char* file)
 {
+    uint32_t total_size = 0;
     for(uint16_t i = 0; i < this->m_i_count; i++)
     {
-        this->m_table[i].read(file);
+        total_size += this->m_table[i].read(file);
     }
 
-    return this->m_size;
+    return total_size;
 }
 
 uint32_t InodeTable::write(const char* file) const
 {
+    uint32_t total_size = 0;
     for(uint16_t i = 0; i < this->m_i_count; i++)
     {
-        this->m_table[i].write(file);
+        total_size += this->m_table[i].write(file);
     }
 
-    return this->m_size;
+    return total_size;
 }
 
 

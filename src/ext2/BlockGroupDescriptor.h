@@ -1,28 +1,12 @@
 #pragma once
 
-#include <cstdint>
-
 #include "Block.h"
 
 class BlockGroupDescriptor : public Block
 {
 public:
-    BlockGroupDescriptor();
-    BlockGroupDescriptor(uint32_t size, uint32_t offset);
-    ~BlockGroupDescriptor() = default;
-
-    uint32_t read(const char* file) override;
-    uint32_t write(const char* file) const override;
-
-    void print_fields() const;
-
-    uint32_t get_inode_table() const;
-
-public:
-    static constexpr const uint16_t GD_SIZE = 32;
-
-private:
-    struct BlockGroupDescriptorFields
+// ---------------- PUBLIC TYPES ----------------
+    struct Fields
     {
         uint32_t bg_block_bitmap = 0;
         uint32_t bg_inode_bitmap = 0;
@@ -34,6 +18,19 @@ private:
         uint8_t  bg_reserved[12]{};
     };
 
-private:
-    BlockGroupDescriptorFields m_fields;
+// ---------------- PUBLIC VARIABLES ----------------
+    Fields m_fields;
+
+// ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
+    BlockGroupDescriptor();
+    BlockGroupDescriptor(uint32_t size, uint32_t offset);
+    ~BlockGroupDescriptor() = default;
+
+// ---------------- PUBLIC METHODS ----------------
+    void print_fields() const;
+
+protected:
+// ---------------- PROTECTED METHODS ----------------
+    void* get_fields_buffer_for_read() override;
+    const void* get_fields_buffer_for_write() const override;
 };
