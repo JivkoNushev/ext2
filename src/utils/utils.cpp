@@ -20,9 +20,9 @@ int find_first_free_bit(uint8_t* bitmap, size_t size)
     return free_bit;
 }
 
-std::vector<utils::string> split_path(const utils::string& path)
+utils::vector<utils::string> split_path(const utils::string& path)
 {
-    std::vector<utils::string> result;
+    utils::vector<utils::string> result;
     size_t start = 0;
     while (true)
     {
