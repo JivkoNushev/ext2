@@ -89,7 +89,7 @@ ClientInterface::ClientInterface(int argc, char** argv)
 
 ClientInterface::~ClientInterface()
 {
-    delete[] this->m_fs;
+    delete this->m_fs;
     this->m_fs = nullptr;
 }
 
