@@ -76,7 +76,7 @@ ClientInterface::ClientInterface(int argc, char** argv)
     switch (fs_type) 
     {
         case FileSystem::FSType::ext2:
-            this->m_fs = Ext2(std::move(file_path), format);
+            this->m_fs = new Ext2(std::move(file_path), format);
             break;
         case FileSystem::FSType::exFAT:
             throw std::invalid_argument("[Error] Not implemented");
@@ -87,6 +87,11 @@ ClientInterface::ClientInterface(int argc, char** argv)
     this->m_running = true;
 }
 
+ClientInterface::~ClientInterface()
+{
+    delete[] this->m_fs;
+    this->m_fs = nullptr;
+}
 
 void ClientInterface::run()
 {
@@ -97,6 +102,10 @@ void ClientInterface::run()
         if(0 == std::strcmp(this->m_buffer, "exit"))
         {
             this->m_running = false;
+        }
+        else if(0 == std::strcmp(this->m_buffer, "tree"))
+        {
+            this->m_fs->tree("/");
         }
     }
 }

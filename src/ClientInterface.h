@@ -6,6 +6,7 @@ class ClientInterface
 {
 public:
     ClientInterface(int argc, char** argv);
+    ~ClientInterface();
     void run();
 private:
     static constexpr uint32_t BUFFER_SIZE = 1024;
@@ -17,6 +18,6 @@ private:
     void print_usage_t() const;
 
     bool m_running = false;
-    FileSystem m_fs;
+    FileSystem* m_fs;
     char m_buffer[BUFFER_SIZE]{};
 };
