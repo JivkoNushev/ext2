@@ -5,9 +5,14 @@
 class FileSystem
 {
 public:
-    enum class FSType : uint8_t { ext2, exFAT };
+// ---------------- PUBLIC TYPES ----------------
+    enum class FSType : uint8_t
+    {
+        ext2,
+        exFAT
+    };
 
-public:
+// ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
     FileSystem();
     FileSystem(const char* device_path, FSType type, bool format);
     virtual ~FileSystem();
@@ -18,13 +23,25 @@ public:
     FileSystem& operator=(const FileSystem& fs);
     FileSystem& operator=(FileSystem&& fs) noexcept;
 
+// ---------------- PUBLIC METHODS ----------------
     const char* get_device_path() const;
-private:
-    void _free();
-    void _copy_from(const FileSystem& fs);
-    void _move_from(FileSystem&& fs);
 
+
+// ---------------- PUBLIC VIRTUAL METHODS ----------------
+    virtual void tree(const char* path) = 0;
+    // virtual void cat(const char* path) = 0;
+    // virtual void touch(const char* path) = 0;
+    // virtual void mkdir(const char* path) = 0;
+    // virtual void rm(const char* path, bool recursive = false) = 0;
+
+private:
+// ---------------- PRIVATE VARIABLES ----------------
     char* m_device_path = nullptr;
     FSType m_type;
     bool m_format = false;
+
+// ---------------- PRIVATE METHODS ----------------
+    void _free();
+    void _copy_from(const FileSystem& fs);
+    void _move_from(FileSystem&& fs);
 };
