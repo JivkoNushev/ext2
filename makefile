@@ -1,7 +1,7 @@
 COMPILER = g++
 PARAMS = -Wall -Wpedantic -Wextra
 
-FS_SRC = src/*.cpp
+FS_SRC = src/*.cpp src/utils/*.cpp
 
 EXT2_IMG = build/ext2.img
 EXT2_BIN = build/ext2
