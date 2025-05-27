@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "SuperBlock.h"
 #include "BlockGroupDescriptorTable.h"
 #include "Inode.h"
@@ -8,9 +10,8 @@ class InodeTable : public Block
 {
 public:
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
-    InodeTable();
-    InodeTable(const SuperBlock& sb, const BlockGroupDescriptorTable& bgdt, uint16_t bg);
-    ~InodeTable();
+    InodeTable(const SuperBlock& sb, const BlockGroupDescriptorTable& bgdt, const char* const& device_path);
+    ~InodeTable() override;
 
     InodeTable(const InodeTable& table);
     InodeTable(InodeTable&& table) noexcept;
@@ -27,8 +28,6 @@ public:
 
     Inode& get_inode(uint32_t inode_number);
 
-    const Inode& get_inode(uint32_t inode_number) const;
-
 protected:
 // ---------------- PROTECTED METHODS ----------------
     void* get_fields_buffer_for_read() override { return nullptr; }
@@ -39,8 +38,15 @@ private:
     Inode* m_table = nullptr;
     uint16_t m_i_count = 0;
 
+    const SuperBlock& m_sb;
+    const BlockGroupDescriptorTable& m_bgdt;
+    const char* const& m_device_path;
+
+    std::optional<uint16_t> m_currently_loaded_group_idx = std::nullopt;
+
 // ---------------- PRIVATE METHODS ----------------
+    bool load_group(uint16_t group_idx);
     void free();
-    void copy_from(const InodeTable& table);
-    void move_from(InodeTable&& table);
+    void copy_from(const InodeTable& other);
+    void move_from(InodeTable&& other);
 };
