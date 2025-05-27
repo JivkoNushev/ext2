@@ -51,6 +51,19 @@ int utils::strcmp(const char* l, const char* r)
     return *l - *r;
 }
 
+int utils::strncmp(const char* l, const char* r, size_t n)
+{
+    while (n-- && *l && (*l == *r))
+    {
+        ++l;
+        ++r;
+    }
+
+    if (n == (size_t)-1) return 0;
+
+    return *l - *r;
+}
+
 char* utils::strchr(char* str, char c)
 {
     while(*str)

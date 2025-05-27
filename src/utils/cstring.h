@@ -15,6 +15,8 @@ namespace utils
 
     int strcmp(const char* l, const char* r);
 
+    int strncmp(const char* l, const char* r, size_t size);
+
     char* strchr(char* str, char c);
 
 }
