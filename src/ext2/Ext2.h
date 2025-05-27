@@ -42,4 +42,6 @@ private:
     void read_triple_indirect_block(uint32_t triple_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size);
 
     void print_tree(uint32_t inode_idx, const utils::string& prefix = utils::string(), bool is_last = true);
+
+    void read_block(uint32_t block_number, uint8_t* buffer, uint32_t block_size) const;
 };

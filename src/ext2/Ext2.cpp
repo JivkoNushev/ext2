@@ -27,9 +27,9 @@ Ext2::Ext2(const char* device_path, bool format) :
     this->m_bgdt.print_fields();
     // this->m_it.print_fields();
 
-    if(!this->create_file("dir1/dir_test", true)) std::cout << "Couldn't create dir\n";
-    if(!this->create_file("dir1/dir_test/test_file", false)) std::cout << "Couldn't create file\n";
-    if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
+    // if(!this->create_file("dir1/dir_test", true)) std::cout << "Couldn't create dir\n";
+    // if(!this->create_file("dir1/dir_test/test_file", false)) std::cout << "Couldn't create file\n";
+    // if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
     this->print_tree(2);
 }
 
@@ -330,4 +330,34 @@ Inode Ext2::resolve_path(const utils::string& path, uint32_t& out_inode_num)
 
     out_inode_num = current_inode_num;
     return current_inode;
+}
+
+void Ext2::read_block(uint32_t block_number, uint8_t* buffer, uint32_t block_size) const
+{
+    std::ifstream ifs(this->get_device_path(), std::ios::binary);
+
+    if (!ifs.is_open())
+    {
+        std::cerr << "[Error] Failed to open device path '" << this->get_device_path() << "' for reading block " << block_number << '\n';
+        throw std::runtime_error("Ext2::read_block - failed to open device");
+    }
+
+    uint32_t offset = block_number * block_size;
+    ifs.seekg(offset, std::ios_base::beg);
+    if (ifs.fail())
+    {
+         std::cerr << "[Error] Failed to seek to offset " << offset << '\n';
+         ifs.close();
+         throw std::runtime_error("Ext2::read_block - failed to seek");
+    }
+
+    ifs.read((char*)(buffer), block_size);
+    if (ifs.fail())
+    {
+         std::cerr << "[Error] Failed to read a block from file device\n";
+         ifs.close();
+         throw std::runtime_error("Ext2::read_block - failed to read data");
+    }
+
+    ifs.close();
 }
