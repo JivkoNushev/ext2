@@ -1,48 +1,36 @@
-#include <optional>
-
 #include "utils.h"
 
-namespace utils
-{
-
-int find_first_free_bit(uint8_t* bitmap, size_t size)
-{
-    int free_bit = -1;
-    for (uint32_t byte_index = 0; byte_index < size; byte_index++) {
-        if (bitmap[byte_index] == 0xFF) continue;
-
-        for (uint8_t bit = 0; bit < 8; bit++)
-        {
-            if (!(bitmap[byte_index] & (1 << bit))) return byte_index * 8 + bit;
-        }
-    }
-
-    return free_bit;
-}
-
-utils::vector<utils::string> split_path(const utils::string& path)
+utils::vector<utils::string> utils::split_str(const utils::string& path, char delimiter)
 {
     utils::vector<utils::string> result;
     size_t start = 0;
-    while (true)
+
+    while (start < path.size())
     {
-        std::optional<size_t> pos = path.find('/', start);
-        if (!pos)
-        {
-            if (start < path.size())
-            {
-                result.push_back(path.substr(start));
-            }
+        while (start < path.size() && path[start] == delimiter)
+            ++start;
+
+        if (start >= path.size())
             break;
-        }
-        if (*pos > start)
-        {
-            result.push_back(path.substr(start, *pos - start));
-        }
-        start = *pos + 1;
+
+        size_t end = start;
+        while (end < path.size() && path[end] != delimiter)
+            ++end;
+
+        result.push_back(path.substr(start, end - start));
+
+        start = end;
     }
 
     return result;
 }
 
+utils::vector<utils::string> utils::split_path(const utils::string& path)
+{
+    return utils::split_str(path, '/');
+}
+
+utils::vector<utils::string> utils::split_words(const utils::string& line)
+{
+    return utils::split_str(line, ' ');
 }

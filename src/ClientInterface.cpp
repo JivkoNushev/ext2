@@ -5,6 +5,7 @@
 #include "ClientInterface.h"
 #include "FileSystem.h"
 #include "ext2/Ext2.h"
+#include "utils/utils.h"
 
 ClientInterface::ClientInterface(int argc, char** argv)
 {
@@ -98,14 +99,15 @@ void ClientInterface::run()
     while(this->m_running)
     {
         std::cin.getline(this->m_buffer, 1024);
-
+        this->m_buffer[1023] = '\0';
+        utils::vector<utils::string> words = utils::split_words((const char*)this->m_buffer);
         if(0 == std::strcmp(this->m_buffer, "exit"))
         {
             this->m_running = false;
         }
-        else if(0 == std::strcmp(this->m_buffer, "tree"))
+        else if(words[0] == "tree")
         {
-            this->m_fs->tree("/");
+            this->m_fs->tree(words[1].c_str());
         }
     }
 }

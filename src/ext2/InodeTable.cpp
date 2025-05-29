@@ -124,7 +124,7 @@ bool InodeTable::load_group(uint16_t group_idx)
         return false;
     }
 
-    free();
+    this->free();
 
     const BlockGroupDescriptor& bgd_for_group = m_bgdt.get_bgd(group_idx);
     uint32_t group_inode_table_start_block = bgd_for_group.m_fields.bg_inode_table;

@@ -28,7 +28,7 @@ public:
 
 
 // ---------------- PUBLIC VIRTUAL METHODS ----------------
-    virtual void tree(const char* path) = 0;
+    virtual void tree(const char* path) const = 0;
     // virtual void cat(const char* path) = 0;
     // virtual void touch(const char* path) = 0;
     // virtual void mkdir(const char* path) = 0;

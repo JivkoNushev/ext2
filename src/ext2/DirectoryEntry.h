@@ -5,6 +5,8 @@
 struct DirectoryEntry
 {
 public:
+    static constexpr const uint8_t MAX_NAME_LEN = 255;
+
     enum FileType : uint8_t
     {
         EXT2_FT_UNKNOWN     = 0, // Unknown File Type
@@ -25,5 +27,5 @@ struct LinkedDirectoryEntry : public DirectoryEntry
     uint16_t rec_len = 0;
     uint8_t  name_len = 0;
     uint8_t  file_type = 0;
-    uint8_t  name[255];
+    uint8_t  name[DirectoryEntry::MAX_NAME_LEN];
 };

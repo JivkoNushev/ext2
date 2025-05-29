@@ -6,7 +6,9 @@
 
 namespace utils
 {
-    int find_first_free_bit(uint8_t* bitmap, size_t size);
+    utils::vector<utils::string> split_str(const utils::string& path, char delimiter);
 
     utils::vector<utils::string> split_path(const utils::string& path);
+
+    utils::vector<utils::string> split_words(const utils::string& line);
 }
