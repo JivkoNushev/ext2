@@ -33,7 +33,7 @@ Ext2::Ext2(const char* device_path, bool format) :
 
         this->create_file("dir1/dir_test", true);
         this->create_file("dir1/dir_test/test_file", false);
-        // if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
+        if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
         this->print_tree(2);
     } catch(const std::exception& e)
     {
@@ -758,4 +758,303 @@ void Ext2::create_file(const utils::string& path, bool is_directory)
     block_bitmap = nullptr;
 
     std::cout << (is_directory ? "Directory" : "File") << " " << path.c_str() << " created successfully.\n";
+}
+
+void Ext2::deallocate_inode_on_disk(uint32_t inode_num, bool is_directory)
+{
+    if (inode_num == 0 || inode_num < Inode::Reserved::EXT2_ROOT_INO)
+    {
+        throw std::runtime_error("Ext2::deallocate_inode_on_disk - invalid inode to deallocate");
+    }
+
+    uint32_t block_size = this->m_sb.get_block_size();
+
+    int bit = (inode_num - 1) % this->m_sb.m_fields.s_inodes_per_group;
+
+    BlockGroupDescriptor& bgd = this->m_bgdt.get_bgd((inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group);
+
+    uint32_t inode_bitmap_num = bgd.m_fields.bg_inode_bitmap;
+    uint8_t* inode_bitmap = new uint8_t[block_size];
+
+    try
+    {
+        this->read_block(inode_bitmap_num, inode_bitmap, block_size);
+
+        if (utils::is_bit_set(inode_bitmap, bit))
+        {
+            utils::clear_bit(inode_bitmap, bit);
+            this->write_block(inode_bitmap_num, inode_bitmap, block_size); 
+
+            bgd.m_fields.bg_free_inodes_count++;
+            if (is_directory && bgd.m_fields.bg_used_dirs_count > 0) bgd.m_fields.bg_used_dirs_count--;
+
+            this->m_sb.m_fields.s_free_inodes_count++;
+        }
+
+        delete[] inode_bitmap;
+    }
+    catch (const std::exception& e)
+    {
+        delete[] inode_bitmap;
+        throw;
+    }
+}
+
+void Ext2::deallocate_block_on_disk(uint32_t block_num)
+{
+    if (block_num < this->m_sb.m_fields.s_first_data_block)
+    {
+        throw std::runtime_error("Ext2::deallocate_block_on_disk - invalid block to deallocate");
+    }
+
+    uint32_t block_size = this->m_sb.get_block_size();
+
+    int bit = (block_num - this->m_sb.m_fields.s_first_data_block) % this->m_sb.m_fields.s_blocks_per_group;
+
+    BlockGroupDescriptor& bgd = this->m_bgdt.get_bgd((block_num - this->m_sb.m_fields.s_first_data_block) / this->m_sb.m_fields.s_blocks_per_group);
+
+    uint32_t block_bitmap_num = bgd.m_fields.bg_block_bitmap;
+    uint8_t* block_bitmap = new uint8_t[block_size];
+
+    try
+    {
+        this->read_block(block_bitmap_num, block_bitmap, block_size);
+        if (utils::is_bit_set(block_bitmap, bit))
+        {
+            utils::clear_bit(block_bitmap, bit);
+            this->write_block(block_bitmap_num, block_bitmap, block_size); 
+
+            bgd.m_fields.bg_free_blocks_count++;
+            this->m_sb.m_fields.s_free_blocks_count++;
+        }
+
+        delete[] block_bitmap;
+    }
+    catch (const std::exception& e)
+    {
+        delete[] block_bitmap;
+        throw; 
+    }
+}
+
+void Ext2::commit_deallocated_file(Inode& entry_inode, uint32_t entry_inode_num, Inode& parent_inode, uint32_t parent_inode_num)
+{
+    bool is_directory = entry_inode.m_fields.i_mode & Inode::Mode::EXT2_S_IFDIR;
+
+    if (entry_inode.m_fields.i_links_count > 0)
+    {
+        entry_inode.m_fields.i_links_count--;
+    }
+
+    entry_inode.m_fields.i_ctime = time(nullptr);
+
+    if (0 == entry_inode.m_fields.i_links_count)
+    {
+        entry_inode.m_fields.i_dtime = time(nullptr);
+
+        for (int i = 0; i < 12; i++)
+        {
+            uint32_t data_block_num = entry_inode.m_fields.i_block[i];
+            if (0 == data_block_num) continue;
+
+            this->deallocate_block_on_disk(data_block_num);
+            entry_inode.m_fields.i_block[i] = 0;
+        }
+        entry_inode.m_fields.i_blocks = 0;
+        entry_inode.m_fields.i_size = 0;
+
+        this->deallocate_inode_on_disk(entry_inode_num, is_directory);
+    }
+
+    this->write_inode(parent_inode, parent_inode_num);
+    this->write_inode(entry_inode, entry_inode_num); 
+
+    for (uint16_t i = 0; i < this->m_sb.get_bg_count(); i++)
+    {
+        this->write_bgd(this->m_bgdt.get_bgd(i), i);
+    }
+
+    this->m_sb.write(this->get_device_path()); 
+
+    this->m_it.get_inode(parent_inode_num) = parent_inode;
+    if (entry_inode.m_fields.i_links_count == 0) {
+        Inode deallocated_marker; 
+        deallocated_marker.m_fields.i_mode = 0; 
+        deallocated_marker.m_fields.i_links_count = 0;
+        deallocated_marker.m_fields.i_dtime = entry_inode.m_fields.i_dtime;
+        this->m_it.get_inode(entry_inode_num) = deallocated_marker;
+    } else {
+        this->m_it.get_inode(entry_inode_num) = entry_inode;
+    }
+
+}
+
+bool Ext2::find_and_remove_entry_from_data_block(Inode& parent_inode, uint32_t entry_data_block_num, const utils::string& entry_name)
+{
+    uint32_t block_size = this->m_sb.get_block_size();
+    uint8_t* block_buffer = new uint8_t[block_size];
+
+    try
+    {
+        this->read_block(entry_data_block_num, block_buffer, block_size);
+        uint32_t current_offset = 0;
+        LinkedDirectoryEntry* previous_entry_ptr = nullptr;
+
+        while (current_offset < block_size)
+        {
+            LinkedDirectoryEntry* current_entry_ptr = (LinkedDirectoryEntry*)(block_buffer + current_offset);
+
+            if (current_entry_ptr->inode != 0 && entry_name.size() == (size_t)(current_entry_ptr->name_len) &&
+                0 == utils::strncmp(entry_name.c_str(), (const char*)(current_entry_ptr->name), current_entry_ptr->name_len))
+            {
+                current_entry_ptr->inode = 0;
+                if (previous_entry_ptr != nullptr && previous_entry_ptr->inode == 0)
+                {
+                    previous_entry_ptr->rec_len += current_entry_ptr->rec_len;
+                }
+
+                this->write_block(entry_data_block_num, block_buffer, block_size);
+                parent_inode.set_times_now();
+
+                return true;
+            }
+
+            previous_entry_ptr = current_entry_ptr;
+            current_offset += current_entry_ptr->rec_len;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        delete[] block_buffer;
+        throw;
+    }
+
+    delete[] block_buffer;
+    return false;
+}
+
+uint32_t Ext2::get_entry_data_block_and_number(const Inode& parent_inode, const utils::string& entry_name, uint32_t& entry_inode_number)
+{
+    for(int i = 0; i < 12; i++)
+    {
+        uint32_t data_block = parent_inode.m_fields.i_block[i];
+        if (data_block == 0) continue;
+
+        utils::vector<LinkedDirectoryEntry> current_block_entries;
+        this->read_directory_block(data_block, current_block_entries, m_sb.get_block_size());
+
+        for(size_t j = 0; j < current_block_entries.size(); j++)
+        {
+            const LinkedDirectoryEntry& entry = current_block_entries[j];
+
+            if (entry.inode != 0 && entry_name.size() == (size_t)(entry.name_len) && 0 == utils::strncmp(entry_name.c_str(), (const char*)(entry.name), entry.name_len))
+            {
+                entry_inode_number = entry.inode;
+                return data_block;
+            }
+        }
+    }
+
+    return 0;
+}
+
+bool Ext2::has_entry_children(const Inode& entry_inode)
+{
+    utils::vector<LinkedDirectoryEntry> target_children = this->read_dir_entries(entry_inode);
+    for (size_t i = 0; i < target_children.size(); i++)
+    {
+        const LinkedDirectoryEntry& child = target_children[i];
+
+        if (child.inode == 0) continue;
+
+        char temp_name[DirectoryEntry::MAX_NAME_LEN]{};
+        uint8_t len = std::min(child.name_len, (uint8_t)(DirectoryEntry::MAX_NAME_LEN - 1));
+
+        utils::memcpy(temp_name, (const char*)(child.name), len);
+        temp_name[len] = '\0';
+
+        if (0 != utils::strcmp(temp_name, ".") && 0 != utils::strcmp(temp_name, ".."))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Ext2::remove_entry_children(const utils::string& path, const Inode& entry_inode)
+{
+    utils::vector<LinkedDirectoryEntry> children_to_process = this->read_dir_entries(entry_inode);
+
+    for (size_t i = 0; i < children_to_process.size(); i++)
+    {
+        const LinkedDirectoryEntry& child = children_to_process[i];
+        if (child.inode == 0) continue;
+
+        char temp_name[DirectoryEntry::MAX_NAME_LEN]{};
+        uint8_t len = std::min(child.name_len, (uint8_t)(DirectoryEntry::MAX_NAME_LEN - 1));
+
+        utils::memcpy(temp_name, (const char*)(child.name), len);
+        temp_name[len] = '\0';
+
+        if (utils::strcmp(temp_name, ".") != 0 && utils::strcmp(temp_name, "..") != 0)
+        {
+            utils::string child_full_path = path;
+            if (child_full_path.back() != '/') child_full_path += "/";
+            child_full_path += temp_name;
+
+            if (!this->remove_file(child_full_path, true))
+            {
+                throw std::runtime_error("Remove: Recursive deletion failed for child.");
+            }
+        }
+    }
+
+}
+
+bool Ext2::remove_file(const utils::string& path, bool recursive)
+{
+    if (path.empty() || path == "/")
+    {
+        throw std::runtime_error("Ext2::remove_file - cannot remove with empty or root path.");
+    }
+
+    const utils::string entry_name = utils::get_entry_name(path);
+    if(entry_name == ".." || "." == entry_name)
+    {
+        throw std::runtime_error("Ext2::remove_file - cannot remove current or previous dir");
+    }
+
+    uint32_t parent_inode_num = 0;
+    const utils::string parent_path = utils::get_parent_path(path);
+    Inode parent_inode = this->resolve_path(parent_path, parent_inode_num); 
+
+    uint32_t entry_inode_num = 0;
+    uint32_t entry_data_block_num = this->get_entry_data_block_and_number(parent_inode, entry_name, entry_inode_num);
+    if (0 == entry_data_block_num)
+    {
+        throw std::runtime_error("Ext2::remove_file - couldn't find entry data block");
+    }
+
+    Inode entry_inode = this->m_it.get_inode(entry_inode_num);
+    bool is_directory = entry_inode.m_fields.i_mode & Inode::Mode::EXT2_S_IFDIR;
+    if(is_directory && this->has_entry_children(entry_inode))
+    {
+        if (!recursive)
+        {
+            throw std::runtime_error("Ext2::remove_file - directory not empty and recursive not set.");
+        }
+
+        this->remove_entry_children(path, entry_inode);
+    }
+
+    if (!this->find_and_remove_entry_from_data_block(parent_inode, entry_data_block_num, entry_name))
+    {
+        throw std::runtime_error("Ext2::remove_file - failed to modify parent directory block.");
+    }
+
+    this->commit_deallocated_file(entry_inode, entry_inode_num, parent_inode, parent_inode_num);
+
+    std::cout << (is_directory ? "Directory " : "File ") << path.c_str() << " removed successfully.\n";
+    return true;
 }

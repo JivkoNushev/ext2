@@ -23,4 +23,6 @@ namespace utils
     int find_first_free_bit(uint8_t* bitmap, size_t size);
 
     void set_bit(uint8_t* bitmap, int bit);
+
+    void clear_bit(uint8_t* bitmap, int bit);
 }

@@ -97,4 +97,20 @@ private:
     );
 
     void create_file(const utils::string& path, bool is_directory);
+
+    void deallocate_inode_on_disk(uint32_t inode_num, bool is_directory);
+
+    void deallocate_block_on_disk(uint32_t block_num);
+
+    void commit_deallocated_file(Inode& entry_inode, uint32_t entry_inode_num, Inode& parent_inode, uint32_t parent_inode_num);
+
+    bool find_and_remove_entry_from_data_block(Inode& parent_inode, uint32_t entry_data_block_num, const utils::string& entry_name);
+
+    uint32_t get_entry_data_block_and_number(const Inode& parent_inode, const utils::string& entry_name, uint32_t& entry_inode_number);
+
+    bool has_entry_children(const Inode& entry_inode);
+
+    void remove_entry_children(const utils::string& path, const Inode& entry_inode);
+
+    bool remove_file(const utils::string& path, bool recursive);
 };

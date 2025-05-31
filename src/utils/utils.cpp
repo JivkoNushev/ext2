@@ -80,3 +80,8 @@ void utils::set_bit(uint8_t* bitmap, int bit)
 {
     bitmap[bit / 8] |= 1 << bit % 8;
 }
+
+void utils::clear_bit(uint8_t* bitmap, int bit)
+{
+    bitmap[bit / 8] &= ~(1 << bit % 8);
+}
