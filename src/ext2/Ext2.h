@@ -29,7 +29,9 @@ private:
 
     static uint32_t get_entry_with_name(const utils::vector<LinkedDirectoryEntry> entries, utils::string component_name);
 
-    const Inode& resolve_path(const utils::string& path, uint32_t& out_inode_num) const;
+    static uint16_t calculate_rec_len(uint8_t name_length);
+
+    Inode& resolve_path(const utils::string& path, uint32_t& out_inode_num);
 
     utils::vector<LinkedDirectoryEntry> read_dir_entries(const Inode& inode) const;
 
@@ -49,4 +51,50 @@ private:
 
     void write_block(uint32_t block_number, uint8_t* buffer, uint32_t block_size) const;
 
+    static void check_entry_name_validity(const utils::string& name);
+
+    uint32_t allocate_inode(uint32_t parent_inode, uint8_t*& out_inode_bitmap, uint32_t& out_inode_bitmap_num);
+
+    uint32_t allocate(uint32_t preferred_group, uint16_t items_per_group, uint8_t*& out_bitmap, uint32_t& out_bitmap_num);
+
+    uint32_t allocate_block(uint32_t inode_num, uint8_t*& out_block_bitmap_data, uint32_t& out_block_bitmap_num);
+
+    void init_directory_block(Inode& new_dir_inode, uint32_t self_inode_num, uint32_t parent_inode_num);
+
+    bool try_split_active_entry(LinkedDirectoryEntry* entry, uint8_t* buffer, uint32_t offset, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len);
+
+    bool try_reuse_hole(LinkedDirectoryEntry* hole, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len);
+
+    void fill_entry(LinkedDirectoryEntry* entry, uint32_t inode_num, const utils::string& name, uint8_t file_type);
+
+    bool write_entry(
+        uint32_t parent_block_num,
+        uint32_t new_entry_inode_num, 
+        const utils::string& new_entry_name, 
+        uint8_t new_entry_file_type,
+        uint16_t entry_len
+    ) ;
+
+    void append_dir_entry(
+        Inode& parent_inode,
+        uint32_t entry_num,
+        const utils::string& entry_name,
+        uint8_t entry_file_type
+    );
+
+    void write_inode(const Inode& inode, uint32_t inode_num);
+
+    void write_bgd(const BlockGroupDescriptor& group_descriptor_to_write, uint32_t group_num);
+
+    void write_sb(const SuperBlock& super_block_to_write);
+
+    void commit_file(
+        bool is_directory, uint32_t new_block_num,
+        const Inode& new_inode, uint32_t new_inode_num,
+        const Inode& parent_inode, uint32_t parent_inode_num,
+        uint8_t* inode_bitmap, uint32_t inode_bitmap_num,
+        uint8_t* block_bitmap, uint32_t block_bitmap_num
+    );
+
+    void create_file(const utils::string& path, bool is_directory);
 };

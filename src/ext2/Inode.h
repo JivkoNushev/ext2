@@ -70,6 +70,7 @@ public:
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
     Inode();
     Inode(uint32_t size, uint32_t offset);
+    Inode(bool is_directory, uint32_t block_size, uint32_t new_block_num);
     ~Inode() = default;
 
 // ---------------- PUBLIC METHODS ----------------

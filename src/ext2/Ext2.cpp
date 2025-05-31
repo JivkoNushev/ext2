@@ -28,10 +28,17 @@ Ext2::Ext2(const char* device_path, bool format) :
     // this->m_bgdt.print_fields();
     // this->m_it.print_fields();
 
-    // if(!this->create_file("dir1/dir_test", true)) std::cout << "Couldn't create dir\n";
-    // if(!this->create_file("dir1/dir_test/test_file", false)) std::cout << "Couldn't create file\n";
-    // if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
-    this->print_tree(2);
+    try
+    {
+
+        this->create_file("dir1/dir_test", true);
+        this->create_file("dir1/dir_test/test_file", false);
+        // if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
+        this->print_tree(2);
+    } catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
 
 void Ext2::format_ext2() const
@@ -58,7 +65,7 @@ void Ext2::tree(const char* path) const
     try
     {
         uint32_t start_inode_num = 0;
-        this->resolve_path(path, start_inode_num);
+        ((Ext2*)this)->resolve_path(path, start_inode_num);
 
         std::cout << path << '\n';
         this->print_tree(start_inode_num); 
@@ -271,10 +278,10 @@ uint32_t Ext2::get_entry_with_name(const utils::vector<LinkedDirectoryEntry> ent
     return 0;
 }
 
-const Inode& Ext2::resolve_path(const utils::string& path, uint32_t& out_inode_num) const
+Inode& Ext2::resolve_path(const utils::string& path, uint32_t& out_inode_num)
 {
     uint32_t current_inode_num = Inode::Reserved::EXT2_ROOT_INO;
-    const Inode* current_inode = &((InodeTable&)this->m_it).get_inode(current_inode_num);
+    Inode* current_inode = &this->m_it.get_inode(current_inode_num);
 
     if (path.empty() || path == "/")
     {
@@ -301,7 +308,7 @@ const Inode& Ext2::resolve_path(const utils::string& path, uint32_t& out_inode_n
             throw std::runtime_error("Ext::resolve_path - component not found.");
         }
 
-        current_inode = &((InodeTable&)this->m_it).get_inode(current_inode_num);
+        current_inode = &this->m_it.get_inode(current_inode_num);
     }
 
     out_inode_num = current_inode_num;
@@ -362,4 +369,393 @@ void Ext2::write_block(uint32_t block_number, uint8_t* buffer, uint32_t block_si
 
     ofs.flush();
     ofs.close();
+}
+
+
+uint16_t Ext2::calculate_rec_len(uint8_t name_length)
+{
+    uint16_t base_size = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t);
+    return (base_size + name_length + 3) & ~3;
+}
+
+
+void Ext2::check_entry_name_validity(const utils::string& name)
+{
+    if (name.empty() || name.size() > DirectoryEntry::MAX_NAME_LEN) {
+        throw std::runtime_error("Ext2::check_entry_name_validity - Name is empty or too long.");
+    }
+
+    if (name == "." || name == "..") {
+        throw std::runtime_error("Ext2::check_entry_name_validity - Name cannot be '.' or '..'.");
+    }
+}
+
+uint32_t Ext2::allocate(uint32_t preferred_group, uint16_t items_per_group, uint8_t*& out_bitmap, uint32_t& out_bitmap_num)
+{
+    uint32_t block_size = this->m_sb.get_block_size();
+    uint32_t num_bgs = this->m_sb.get_bg_count();
+
+    for (uint32_t i = 0; i < num_bgs; i++)
+    {
+        uint32_t current_group_idx = (preferred_group + i) % num_bgs;
+        const BlockGroupDescriptor& out_group_desc = this->m_bgdt.get_bgd(current_group_idx); 
+
+        if (out_group_desc.m_fields.bg_free_inodes_count == 0) continue;
+
+        out_bitmap_num = out_group_desc.m_fields.bg_inode_bitmap;
+        out_bitmap = new uint8_t[block_size];
+
+        try
+        {
+            this->read_block(out_bitmap_num, out_bitmap, block_size);
+            int free_bit_idx = utils::find_first_free_bit(out_bitmap, block_size);
+
+            if (free_bit_idx != -1 && (uint32_t)(free_bit_idx) < items_per_group)
+            {
+                utils::set_bit(out_bitmap, free_bit_idx);
+                return (current_group_idx * items_per_group) + free_bit_idx;
+            }
+            delete[] out_bitmap;
+            out_bitmap = nullptr;
+        }
+        catch (const std::exception& e)
+        {
+            delete[] out_bitmap;
+            out_bitmap = nullptr;
+            throw;
+        }
+    }
+
+    return 0;
+}
+
+uint32_t Ext2::allocate_inode(uint32_t parent_inode, uint8_t*& out_inode_bitmap, uint32_t& out_inode_bitmap_num)
+{
+    uint32_t preferred_group = (parent_inode > 0 && parent_inode <= this->m_sb.m_fields.s_inodes_count) ? 
+                               (parent_inode - 1) /  this->m_sb.m_fields.s_inodes_per_group : 0;
+
+    uint32_t inode_num = this->allocate(preferred_group, this->m_sb.m_fields.s_inodes_per_group, out_inode_bitmap, out_inode_bitmap_num);
+    if(0 == inode_num) return 0;
+
+    return inode_num + 1; // inodes start from 1
+}
+
+uint32_t Ext2::allocate_block(uint32_t inode_num, uint8_t*& out_block_bitmap_data, uint32_t& out_block_bitmap_num)
+{
+    uint32_t preferred_group = (inode_num > 0 && inode_num <= this->m_sb.m_fields.s_inodes_count && this->m_sb.m_fields.s_inodes_per_group > 0) ?
+                               (inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group : 0;
+
+    uint32_t block_num = this->allocate(preferred_group, this->m_sb.m_fields.s_blocks_per_group, out_block_bitmap_data, out_block_bitmap_num);
+    if(0 == block_num) return 0;
+
+    return block_num + this->m_sb.m_fields.s_first_data_block; // blocks start from first_data_block
+}
+
+void Ext2::init_directory_block(Inode& inode, uint32_t inode_num, uint32_t parent_inode_num)
+{
+    uint32_t block_size = this->m_sb.get_block_size();
+    uint8_t* block_buffer = new uint8_t[block_size]{};
+
+    LinkedDirectoryEntry* dot_entry = (LinkedDirectoryEntry*)(block_buffer);
+    dot_entry->inode = inode_num;
+    dot_entry->name_len = 1;
+    dot_entry->file_type = DirectoryEntry::FileType::EXT2_FT_DIR;
+    dot_entry->name[0] = '.';
+    dot_entry->rec_len = Ext2::calculate_rec_len(1);
+
+    LinkedDirectoryEntry* dotdot_entry = (LinkedDirectoryEntry*)(block_buffer + dot_entry->rec_len);
+    dotdot_entry->inode = parent_inode_num;
+    dotdot_entry->name_len = 2;
+    dotdot_entry->file_type = DirectoryEntry::FileType::EXT2_FT_DIR;
+    dotdot_entry->name[0] = '.';
+    dotdot_entry->name[1] = '.';
+    dotdot_entry->rec_len = block_size - dot_entry->rec_len;
+
+    this->write_block(inode.m_fields.i_block[0], block_buffer, block_size);
+
+    delete[] block_buffer;
+}
+
+void Ext2::fill_entry(LinkedDirectoryEntry* entry, uint32_t inode_num, const utils::string& name, uint8_t file_type)
+{
+    entry->inode = inode_num;
+    entry->name_len = (uint8_t)(name.size());
+    entry->file_type = file_type;
+
+    utils::memcpy((char*)(entry->name), name.c_str(), name.size());
+
+    if (name.size() < DirectoryEntry::MAX_NAME_LEN)
+    {
+        entry->name[name.size()] = '\0';
+    }
+}
+
+bool Ext2::try_reuse_hole(LinkedDirectoryEntry* hole, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len)
+{
+    if (hole->rec_len < entry_len) return false;
+
+    this->fill_entry(hole, inode_num, name, file_type);
+
+    uint16_t leftover = hole->rec_len - entry_len;
+    hole->rec_len = entry_len;
+
+    if (leftover >= Ext2::calculate_rec_len(0))
+    {
+        LinkedDirectoryEntry* next_hole = (LinkedDirectoryEntry*)((uint8_t*)(hole) + entry_len);
+
+        this->fill_entry(next_hole, 0, "", DirectoryEntry::FileType::EXT2_FT_UNKNOWN);
+        next_hole->rec_len = leftover;
+    }
+    else if (leftover > 0)
+    {
+        hole->rec_len += leftover;
+    }
+
+    return true;
+}
+
+bool Ext2::try_split_active_entry(LinkedDirectoryEntry* entry, uint8_t* buffer, uint32_t offset, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len)
+{
+    uint16_t current_entry_len = Ext2::calculate_rec_len(entry->name_len);
+
+    if (entry->rec_len < current_entry_len + entry_len) return false;
+
+    uint16_t original_rec_len = entry->rec_len;
+    entry->rec_len = current_entry_len;
+
+    LinkedDirectoryEntry* new_entry = (LinkedDirectoryEntry*)(buffer + offset + current_entry_len);
+    this->fill_entry(new_entry, inode_num, name, file_type);
+    new_entry->rec_len = original_rec_len - current_entry_len;
+
+    return true;
+}
+
+
+bool Ext2::write_entry(uint32_t parent_block_num, uint32_t new_entry_inode_num, const utils::string& new_entry_name, uint8_t new_entry_file_type, uint16_t entry_len)
+{
+    uint32_t block_size = this->m_sb.get_block_size();
+
+    uint8_t* block_buffer = new uint8_t[block_size];
+    this->read_block(parent_block_num, block_buffer, block_size);
+
+    uint32_t current_offset = 0;
+    while (current_offset < block_size)
+    {
+        LinkedDirectoryEntry* current_disk_entry = (LinkedDirectoryEntry*)(block_buffer + current_offset);
+
+        if (current_disk_entry->rec_len == 0) break;
+
+        if (current_disk_entry->inode != 0 &&
+            this->try_split_active_entry(current_disk_entry, block_buffer, current_offset, new_entry_inode_num, new_entry_name, new_entry_file_type, entry_len))
+        {
+            this->write_block(parent_block_num, block_buffer, block_size);
+
+            delete[] block_buffer;
+            return true;
+        }
+        else if (this->try_reuse_hole(current_disk_entry, new_entry_inode_num, new_entry_name, new_entry_file_type, entry_len))
+        {
+            this->write_block(parent_block_num, block_buffer, block_size);
+
+            delete[] block_buffer;
+            return true;
+        }
+
+        current_offset += current_disk_entry->rec_len;
+    }
+
+
+    delete[] block_buffer;
+    std::cerr << "[Errir] Ext2::write_entry - no space in this block\n";
+    return false;
+}
+
+void Ext2::append_dir_entry(Inode& parent_inode, uint32_t inode_num, const utils::string& entry_name, uint8_t entry_file_type)
+{
+    uint16_t entry_len = Ext2::calculate_rec_len((uint8_t)(entry_name.size()));
+
+    for (int i = 0; i < 12; i++)
+    {
+        uint32_t parent_block_num = parent_inode.m_fields.i_block[i];
+        if (parent_block_num == 0) continue; // unallocated block
+
+        try
+        {
+            if (this->write_entry(parent_block_num, inode_num, entry_name, entry_file_type, entry_len))
+            {
+                parent_inode.set_times_now();
+                return;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[Error] Ext2::append_dir_entry - block: " <<  parent_block_num << " - " << e.what() << '\n';
+        }
+    }
+
+    throw std::runtime_error("Ext2::append_dir_entry - No space found in parent's existing direct blocks");
+}
+
+void Ext2::write_inode(const Inode& inode_to_write, uint32_t inode_num)
+{
+    Inode& inode = this->m_it.get_inode(inode_num);
+    Inode temp_inode = inode;
+    inode = inode_to_write;
+
+    try
+    {
+        inode.write(this->get_device_path());
+    }
+    catch(const std::exception& e)
+    {
+        inode = temp_inode;
+        throw;
+    }
+}
+
+void Ext2::write_bgd(const BlockGroupDescriptor& group_descriptor_to_write, uint32_t group_num)
+{
+    BlockGroupDescriptor& group_desc = this->m_bgdt.get_bgd(group_num);
+    BlockGroupDescriptor temp_group_desc = group_desc;
+    group_desc = group_descriptor_to_write;
+
+    try
+    {
+        group_desc.write(this->get_device_path());
+    }
+    catch(const std::exception& e)
+    {
+        group_desc = temp_group_desc;
+        throw;
+    }
+}
+
+void Ext2::write_sb(const SuperBlock& super_block_to_write)
+{
+    SuperBlock temp_group_desc = this->m_sb;
+    this->m_sb = super_block_to_write;
+
+    try
+    {
+        this->m_sb.write(this->get_device_path());
+    }
+    catch(const std::exception& e)
+    {
+        this->m_sb = temp_group_desc ;
+        throw;
+    }
+}
+
+void Ext2::commit_file(
+    bool is_directory, uint32_t new_block_num,
+    const Inode& new_inode, uint32_t new_inode_num,
+    const Inode& parent_inode, uint32_t parent_inode_num,
+    uint8_t* inode_bitmap, uint32_t inode_bitmap_num,
+    uint8_t* block_bitmap, uint32_t block_bitmap_num
+)
+{
+    uint32_t new_inode_bgd_num = (new_inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group;
+    BlockGroupDescriptor new_inode_bgd = this->m_bgdt.get_bgd(new_inode_bgd_num);
+
+    uint32_t new_block_bgd_num = (new_block_num - this->m_sb.m_fields.s_first_data_block) / this->m_sb.m_fields.s_blocks_per_group;
+    BlockGroupDescriptor new_block_bgd = this->m_bgdt.get_bgd(new_block_bgd_num);
+
+    if (is_directory) new_inode_bgd.m_fields.bg_used_dirs_count++;
+    new_inode_bgd.m_fields.bg_free_inodes_count--;
+    new_block_bgd.m_fields.bg_free_blocks_count--;
+
+    this->write_inode(new_inode, new_inode_num);
+    this->write_inode(parent_inode, parent_inode_num);
+
+    this->write_bgd(new_inode_bgd, new_inode_bgd_num);
+    if (new_inode_bgd_num != new_block_bgd_num) this->write_bgd(new_block_bgd, new_block_bgd_num);
+
+    SuperBlock sb_copy = this->m_sb;
+    sb_copy.m_fields.s_free_inodes_count--;
+    sb_copy.m_fields.s_free_blocks_count--;
+
+    this->write_sb(sb_copy);
+
+    this->write_block(inode_bitmap_num, inode_bitmap, this->m_sb.get_block_size());
+    this->write_block(block_bitmap_num, block_bitmap, this->m_sb.get_block_size());
+}
+
+void Ext2::create_file(const utils::string& path, bool is_directory)
+{
+    if (path.empty() || path == "/")
+    {
+        throw std::runtime_error("Ext2::create_file - cannot create with empty or root path.");
+    }
+
+    const utils::string entry_name = utils::get_entry_name(path);
+    Ext2::check_entry_name_validity(entry_name);
+
+    uint32_t parent_inode_num = 0;
+    const utils::string parent_path = utils::get_parent_path(path);
+    Inode parent_inode = this->resolve_path(parent_path, parent_inode_num); 
+    if (!(parent_inode.m_fields.i_mode & Inode::Mode::EXT2_S_IFDIR))
+    {
+        throw std::runtime_error("Ext2::create_file - parent path is not a directory.");
+    }
+
+    const utils::vector<LinkedDirectoryEntry> parent_entries = this->read_dir_entries(parent_inode);
+    if (0 != Ext2::get_entry_with_name(parent_entries, entry_name))
+    {
+        throw std::runtime_error("Ext2::create_file - entry with that name already exists.");
+    }
+
+    uint8_t* inode_bitmap = nullptr;
+    uint32_t inode_bitmap_num = 0;
+
+    uint32_t new_inode_num = this->allocate_inode(parent_inode_num, inode_bitmap, inode_bitmap_num);
+    if (0 == new_inode_num)
+    {
+        throw std::runtime_error("Ext2::create_file - failed to allocate a new inode.");
+    }
+
+    uint8_t* block_bitmap = nullptr;
+    uint32_t block_bitmap_num = 0;
+
+
+    uint32_t new_block_num = this->allocate_block(new_inode_num, block_bitmap, block_bitmap_num);
+    if (0 == new_block_num)
+    {
+        delete[] inode_bitmap;
+        throw std::runtime_error("Ext2::create_file - failed to allocate a new data block.");
+    }
+
+    Inode new_inode = this->m_it.get_inode(new_inode_num);
+    new_inode.init(is_directory, this->m_sb.get_block_size(), new_block_num);
+    try
+    {
+        if (is_directory)
+        {
+            this->init_directory_block(new_inode, new_inode_num, parent_inode_num);
+        }
+
+        uint8_t entry_fs_type = is_directory ? DirectoryEntry::FileType::EXT2_FT_DIR : DirectoryEntry::FileType::EXT2_FT_REG_FILE;
+        this->append_dir_entry(parent_inode, new_inode_num, entry_name, entry_fs_type);
+
+        this->commit_file(
+            is_directory, new_block_num,
+            new_inode, new_inode_num,
+            parent_inode, parent_inode_num,
+            inode_bitmap, inode_bitmap_num,
+            block_bitmap, block_bitmap_num
+        );
+    }
+    catch(const std::exception& e)
+    {
+        delete[] inode_bitmap;
+        delete[] block_bitmap;
+        throw;
+    }
+
+    delete[] inode_bitmap;
+    inode_bitmap= nullptr;
+
+    delete[] block_bitmap;
+    block_bitmap = nullptr;
+
+    std::cout << (is_directory ? "Directory" : "File") << " " << path.c_str() << " created successfully.\n";
 }

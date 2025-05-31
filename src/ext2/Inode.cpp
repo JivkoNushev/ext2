@@ -10,6 +10,12 @@ Inode::Inode(uint32_t size, uint32_t offset) :
     Block(size, offset)
 {}
 
+Inode::Inode(bool is_directory, uint32_t block_size, uint32_t new_block_num) :
+    Block(0, 0)
+{
+    this->init(is_directory, block_size, new_block_num);
+}
+
 void Inode::print_fields() const
 {
     std::cout << "i_mode: "                         << this->m_fields.i_mode << '\n';
