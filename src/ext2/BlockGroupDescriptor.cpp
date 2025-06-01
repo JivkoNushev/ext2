@@ -3,7 +3,7 @@
 #include "BlockGroupDescriptor.h"
 
 BlockGroupDescriptor::BlockGroupDescriptor() :
-    Block(0, 0)
+    Block(sizeof(BlockGroupDescriptor::Fields), 0)
 {}
 
 BlockGroupDescriptor::BlockGroupDescriptor(uint32_t size, uint32_t offset) :

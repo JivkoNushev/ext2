@@ -3,7 +3,7 @@
 #include "Inode.h"
 
 Inode::Inode() :
-    Block(0, 0)
+    Block(sizeof(Inode::Fields), 0)
 {}
 
 Inode::Inode(uint32_t size, uint32_t offset) :
@@ -11,7 +11,7 @@ Inode::Inode(uint32_t size, uint32_t offset) :
 {}
 
 Inode::Inode(bool is_directory, uint32_t block_size, uint32_t new_block_num) :
-    Block(0, 0)
+    Block(sizeof(Inode::Fields), 0)
 {
     this->init(is_directory, block_size, new_block_num);
 }

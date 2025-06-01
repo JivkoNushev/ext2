@@ -104,6 +104,10 @@ void ClientInterface::run()
         {
             this->m_running = false;
         }
+        else if(0 == utils::strcmp(this->m_buffer, "help"))
+        {
+            this->print_shell_help();
+        }
         else if(words[0] == "tree")
         {
             this->m_fs->tree(words[1].c_str());
@@ -122,7 +126,8 @@ void ClientInterface::run()
         }
         else if (words[0] == "rm")
         {
-            this->m_fs->rm(words[2].c_str(), (words[1] == "-r") ? true : false);
+            bool recursive = (words[1] == "-r") ? true : false;
+            this->m_fs->rm(words[1 + (uint8_t)recursive].c_str(), recursive);
         }
         else if (words[0] == "write" || words[0] == "append")
         {
@@ -171,5 +176,21 @@ void ClientInterface::print_usage_t() const
 "[USAGE]:\n\
     -t, --type FS_TYPE              - choose a file system FS_TYPE can be: ext2, exFAT.\n\
 ";
+
+}
+
+void ClientInterface::print_shell_help() const
+{
+    std::cout
+<< "Available commands:\n"
+<< "  tree <path>                - display the directory tree starting from <path>\n"
+<< "  cat <filepath>             - display the content of <filepath>\n"
+<< "  touch <filepath>           - create an empty file\n"
+<< "  mkdir <dirpath>            - create a new directory at <dirpath>.\n"
+<< "  rm [-r] <path>             - remove a file or directory. Use -r for recursive deletion\n"
+<< "  write <filepath>           - write a single line to <filepath>, overwriting existing content\n"
+<< "  append <filepath>          - append a single line to <filepath>\n"
+<< "  help                       - display this help message\n"
+<< "  exit                       - exit the shell\n\n";
 
 }
