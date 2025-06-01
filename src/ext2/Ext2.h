@@ -126,4 +126,25 @@ private:
     utils::vector<uint8_t> read_file_data(const Inode& inode);
 
     utils::vector<uint8_t> read_file(const utils::string& path);
+
+
+    void allocate_and_fill_data_block(uint32_t inode_num, uint32_t& target_block_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
+
+
+    void process_direct_block_writes(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
+
+
+    bool process_indirect_block_writes_recursive(uint32_t inode_num, int level, uint32_t* indirect_block_id_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
+
+
+    void perform_inode_data_write(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data_to_write);
+
+
+    void deallocate_direct_blocks(Inode& inode);
+
+    void deallocate_indirect_blocks_recursive(uint32_t block_num, int level);
+
+    void deallocate_inode_content(Inode& inode);
+
+    void write_file(const utils::string& path, const utils::vector<uint8_t>& data_to_write_param, bool append);
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cstring.h"
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -18,6 +19,8 @@ public:
     vector();
 
     vector(size_t capacity);
+
+    vector(const T* data, size_t size);
 
     ~vector();
 
@@ -76,6 +79,18 @@ utils::vector<T>::vector(size_t capacity) :
     m_capacity(capacity)
 {
     this->m_data = new T[this->m_capacity];
+}
+
+template<class T>
+utils::vector<T>::vector(const T* data, size_t size) :
+    m_size(size),
+    m_capacity(size)
+{
+    this->m_data = new T[this->m_capacity];
+    for(size_t i = 0; i < size; i++)
+    {
+        this->m_data[i] = data[i];
+    }
 }
 
 template<class T>
