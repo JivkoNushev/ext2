@@ -15,8 +15,12 @@ public:
     ~Ext2() = default;
 
 // ---------------- PUBLIC METHODS ----------------
-    void tree(const char* path) const override;
-    void cat(const char* path) const override;
+    void tree(const char* path) const noexcept override;
+    void cat(const char* path) const noexcept override;
+    void write(const char* path, const char* data, bool append) noexcept override;
+    void touch(const char* path) noexcept override;
+    void mkdir(const char* path) noexcept override;
+    void rm(const char* path, bool recursive = false) noexcept override;
 
 private:
 // ---------------- PRIVATE VARIABLES ----------------
@@ -113,7 +117,7 @@ private:
 
     void remove_entry_children(const utils::string& path, const Inode& entry_inode);
 
-    bool remove_file(const utils::string& path, bool recursive);
+    void remove_file(const utils::string& path, bool recursive);
 
     void process_block(utils::vector<uint8_t>& file_data, uint32_t file_size, uint32_t& bytes_read, uint32_t block_num, uint8_t* block_buffer);
 

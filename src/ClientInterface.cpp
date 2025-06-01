@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <cstring>
 
 #include "ClientInterface.h"
 #include "FileSystem.h"
@@ -15,12 +14,12 @@ ClientInterface::ClientInterface(int argc, char** argv)
 
     for(int i = 1; i < argc; i++)
     {
-        if(0 == std::strcmp(argv[i], "-h") || 0 == std::strcmp(argv[i], "--help"))
+        if(0 == utils::strcmp(argv[i], "-h") || 0 == utils::strcmp(argv[i], "--help"))
         {
             this->print_usage_h();
             return;
         }
-        else if(0 == std::strcmp(argv[i], "-t") || 0 == std::strcmp(argv[i], "--type"))
+        else if(0 == utils::strcmp(argv[i], "-t") || 0 == utils::strcmp(argv[i], "--type"))
         {
             if(++i >= argc)
             {
@@ -28,11 +27,11 @@ ClientInterface::ClientInterface(int argc, char** argv)
                 return;
             }
 
-            if(0 == std::strcmp(argv[i], "ext2"))
+            if(0 == utils::strcmp(argv[i], "ext2"))
             {
                 continue;
             }
-            else if(0 == std::strcmp(argv[i], "exFAT"))
+            else if(0 == utils::strcmp(argv[i], "exFAT"))
             {
                 fs_type = FileSystem::FSType::exFAT;
             }
@@ -42,7 +41,7 @@ ClientInterface::ClientInterface(int argc, char** argv)
                 return;
             }
         }
-        else if(0 == std::strcmp(argv[i], "-d") || 0 == std::strcmp(argv[i], "--device"))
+        else if(0 == utils::strcmp(argv[i], "-d") || 0 == utils::strcmp(argv[i], "--device"))
         {
             if(++i >= argc)
             {
@@ -52,12 +51,12 @@ ClientInterface::ClientInterface(int argc, char** argv)
 
             if(!std::ifstream(argv[i]).good()) throw std::invalid_argument("[Error] Invalid File Path");
 
-            file_path = new char[std::strlen(argv[i] + 1)];
+            file_path = new char[utils::strlen(argv[i] + 1)];
             if(!file_path) throw std::runtime_error("[Error] Insufficient Memory");
 
-            std::strcpy(file_path, argv[i]);
+            utils::strcpy(file_path, argv[i]);
         }
-        else if(0 == std::strcmp(argv[i], "-f") || 0 == std::strcmp(argv[i], "--format"))
+        else if(0 == utils::strcmp(argv[i], "-f") || 0 == utils::strcmp(argv[i], "--format"))
         {
             format = true;
         }
@@ -101,7 +100,7 @@ void ClientInterface::run()
         std::cin.getline(this->m_buffer, 1024);
         this->m_buffer[1023] = '\0';
         utils::vector<utils::string> words = utils::split_words((const char*)this->m_buffer);
-        if(0 == std::strcmp(this->m_buffer, "exit"))
+        if(0 == utils::strcmp(this->m_buffer, "exit"))
         {
             this->m_running = false;
         }
@@ -112,6 +111,28 @@ void ClientInterface::run()
         else if(words[0] == "cat")
         {
             this->m_fs->cat(words[1].c_str());
+        }
+        else if (words[0] == "touch")
+        {
+            this->m_fs->touch(words[1].c_str());
+        }
+        else if (words[0] == "mkdir")
+        {
+            this->m_fs->mkdir(words[1].c_str());
+        }
+        else if (words[0] == "rm")
+        {
+            this->m_fs->rm(words[2].c_str(), (words[1] == "-r") ? true : false);
+        }
+        else if (words[0] == "write" || words[0] == "append")
+        {
+            utils::string filepath = words[1];
+            bool append_mode = (words[0] == "append");
+
+            char buffer[1 << 16]{};
+            std::cin.getline(buffer, 1 << 16);
+
+            this->m_fs->write(filepath.c_str(), buffer, append_mode);
         }
     }
 }

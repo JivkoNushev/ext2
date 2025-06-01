@@ -23,26 +23,6 @@ Ext2::Ext2(const char* device_path, bool format) :
     {
         this->load_ext2();
     }
-
-    // this->m_sb.print_fields();
-    // this->m_bgdt.print_fields();
-    // this->m_it.print_fields();
-
-    try
-    {
-
-        this->create_file("dir1/dir_test", true);
-        this->create_file("dir1/dir_test/test_file", false);
-
-        char data_raw[] = "Writing to file is working\n";
-        utils::vector<uint8_t> data((uint8_t*)data_raw, sizeof(data_raw));
-        this->write_file("dir1/file2", data, false);
-        if(!this->remove_file("dir1/dir_test", true)) std::cout << "Couldn't delete folder\n";
-        this->print_tree(2);
-    } catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
 }
 
 void Ext2::format_ext2() const
@@ -62,7 +42,7 @@ void Ext2::load_ext2()
     this->m_it.read(get_device_path());
 }
 
-void Ext2::tree(const char* path) const
+void Ext2::tree(const char* path) const noexcept
 {
     if(path == nullptr) return;
 
@@ -76,11 +56,11 @@ void Ext2::tree(const char* path) const
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Error] Ext2::tree - tree " << path << " exited with: " << e.what() << '\n';
+        std::cerr << "[Error] Ext2::tree - " << e.what() << '\n';
     }
 }
 
-void Ext2::cat(const char* path) const
+void Ext2::cat(const char* path) const noexcept
 {
     if (!path) return;
 
@@ -88,10 +68,60 @@ void Ext2::cat(const char* path) const
     {
         const utils::vector<uint8_t> data = ((Ext2*)this)->read_file(path); 
         utils::print_utf8(data);
+        std::cout << '\n';
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Error] Ext2::cat - cat " << path << " exited with: " << e.what() << '\n';
+        std::cerr << "[Error] Ext2::cat - " << e.what() << '\n';
+    }
+}
+
+void Ext2::write(const char* path, const char* data, bool append) noexcept
+{
+    try
+    {
+        utils::vector<uint8_t> data_vector((uint8_t*)data, utils::strlen(data));
+        this->write_file(path, data_vector, append);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "[Error] Ext2::touch - " << e.what() << '\n';
+    }
+}
+
+void Ext2::touch(const char* path) noexcept
+{
+    try
+    {
+        this->create_file(path, false);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "[Error] Ext2::touch - " << e.what() << '\n';
+    }
+}
+
+void Ext2::mkdir(const char* path) noexcept
+{
+    try
+    {
+        this->create_file(path, true);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "[Error] Ext2::mkdir - " << e.what() << '\n';
+    }
+}
+
+void Ext2::rm(const char* path, bool recursive) noexcept
+{
+    try
+    {
+        this->remove_file(path, recursive);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "[Error] Ext2::rm - " << e.what() << '\n';
     }
 }
 
@@ -1025,16 +1055,13 @@ void Ext2::remove_entry_children(const utils::string& path, const Inode& entry_i
             if (child_full_path.back() != '/') child_full_path += "/";
             child_full_path += temp_name;
 
-            if (!this->remove_file(child_full_path, true))
-            {
-                throw std::runtime_error("Remove: Recursive deletion failed for child.");
-            }
+            this->remove_file(child_full_path, true);
         }
     }
 
 }
 
-bool Ext2::remove_file(const utils::string& path, bool recursive)
+void Ext2::remove_file(const utils::string& path, bool recursive)
 {
     if (path.empty() || path == "/")
     {
@@ -1078,7 +1105,6 @@ bool Ext2::remove_file(const utils::string& path, bool recursive)
     this->commit_deallocated_file(entry_inode, entry_inode_num, parent_inode, parent_inode_num);
 
     std::cout << (is_directory ? "Directory " : "File ") << path.c_str() << " removed successfully.\n";
-    return true;
 }
 
 void Ext2::process_block(utils::vector<uint8_t>& file_data, uint32_t file_size, uint32_t& bytes_read, uint32_t block_num, uint8_t* block_buffer)
