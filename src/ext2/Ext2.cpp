@@ -76,6 +76,21 @@ void Ext2::tree(const char* path) const
     }
 }
 
+void Ext2::cat(const char* path) const
+{
+    if (!path) return;
+
+    try
+    {
+        const utils::vector<uint8_t> data = ((Ext2*)this)->read_file(path); 
+        utils::print_utf8(data);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Error] Ext2::cat - cat " << path << " exited with: " << e.what() << '\n';
+    }
+}
+
 void Ext2::print_tree(uint32_t inode_idx, const utils::string& prefix, bool is_last_sibling) const
 {
     const Inode& current_inode_obj = ((InodeTable&)this->m_it).get_inode(inode_idx);
@@ -122,7 +137,6 @@ void Ext2::print_tree(uint32_t inode_idx, const utils::string& prefix, bool is_l
 utils::vector<LinkedDirectoryEntry> Ext2::read_dir_entries(const Inode& dir_inode) const
 {
     utils::vector<LinkedDirectoryEntry> entries;
-    uint32_t block_size = m_sb.get_block_size();
 
     if (!(dir_inode.m_fields.i_mode & Inode::Mode::EXT2_S_IFDIR))
     {
@@ -134,32 +148,34 @@ utils::vector<LinkedDirectoryEntry> Ext2::read_dir_entries(const Inode& dir_inod
         uint32_t data_block_num = dir_inode.m_fields.i_block[i];
         if (data_block_num == 0) continue;
 
-        this->read_directory_block(data_block_num, entries, block_size);
+        this->read_directory_block(data_block_num, entries);
     }
 
     uint32_t single_indirect_block_num = dir_inode.m_fields.i_block[12];
     if (single_indirect_block_num != 0)
     {
-        this->read_single_indirect_block(single_indirect_block_num, entries, block_size);
+        this->read_single_indirect_block(single_indirect_block_num, entries);
     }
 
     uint32_t double_indirect_block_num = dir_inode.m_fields.i_block[13];
     if (double_indirect_block_num != 0)
     {
-        this->read_double_indirect_block(double_indirect_block_num, entries, block_size);
+        this->read_double_indirect_block(double_indirect_block_num, entries);
     }
 
     uint32_t triple_indirect_block_num = dir_inode.m_fields.i_block[14];
     if (triple_indirect_block_num != 0)
     {
-        this->read_triple_indirect_block(triple_indirect_block_num, entries, block_size);
+        this->read_triple_indirect_block(triple_indirect_block_num, entries);
     }
 
     return entries;
 }
 
-void Ext2::read_directory_block(uint32_t data_block_num, utils::vector<LinkedDirectoryEntry>& entries, uint32_t block_size) const
+void Ext2::read_directory_block(uint32_t data_block_num, utils::vector<LinkedDirectoryEntry>& entries) const
 {
+    uint32_t block_size = this->m_sb.get_block_size();
+
     uint8_t* block_data = new uint8_t[block_size];
 
     try
@@ -201,8 +217,10 @@ void Ext2::read_directory_block(uint32_t data_block_num, utils::vector<LinkedDir
     delete[] block_data;
 }
 
-utils::vector<uint32_t> Ext2::read_indirect_block_pointers(uint32_t indirect_block_num, uint32_t block_size) const
+utils::vector<uint32_t> Ext2::read_indirect_block_pointers(uint32_t indirect_block_num) const
 {
+    uint32_t block_size = this->m_sb.get_block_size();
+
     utils::vector<uint32_t> pointers;
 
     uint8_t* indirect_block_data = new uint8_t[block_size];
@@ -232,33 +250,33 @@ utils::vector<uint32_t> Ext2::read_indirect_block_pointers(uint32_t indirect_blo
     return pointers;
 }
 
-void Ext2::read_single_indirect_block(uint32_t indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const
+void Ext2::read_single_indirect_block(uint32_t indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const
 {
-    utils::vector<uint32_t> data_block_pointers = read_indirect_block_pointers(indirect_block_num, block_size);
+    utils::vector<uint32_t> data_block_pointers = this->read_indirect_block_pointers(indirect_block_num);
 
     for (size_t i = 0; i < data_block_pointers.size(); i++)
     {
-        read_directory_block(data_block_pointers[i], all_entries, block_size);
+        this->read_directory_block(data_block_pointers[i], all_entries);
     }
 }
 
-void Ext2::read_double_indirect_block(uint32_t double_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const
+void Ext2::read_double_indirect_block(uint32_t double_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const
 {
-    utils::vector<uint32_t> single_indirect_block_pointers = read_indirect_block_pointers(double_indirect_block_num, block_size);
+    utils::vector<uint32_t> single_indirect_block_pointers = this->read_indirect_block_pointers(double_indirect_block_num);
 
     for (size_t i = 0; i < single_indirect_block_pointers.size(); i++)
     {
-        read_single_indirect_block(single_indirect_block_pointers[i], all_entries, block_size);
+        this->read_single_indirect_block(single_indirect_block_pointers[i], all_entries);
     }
 }
 
-void Ext2::read_triple_indirect_block(uint32_t triple_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const
+void Ext2::read_triple_indirect_block(uint32_t triple_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const
 {
-    utils::vector<uint32_t> double_indirect_block_pointers = read_indirect_block_pointers(triple_indirect_block_num, block_size);
+    utils::vector<uint32_t> double_indirect_block_pointers = this->read_indirect_block_pointers(triple_indirect_block_num);
 
     for (size_t i = 0; i < double_indirect_block_pointers.size(); i++)
     {
-        read_double_indirect_block(double_indirect_block_pointers[i], all_entries, block_size);
+        this->read_double_indirect_block(double_indirect_block_pointers[i], all_entries);
     }
 }
 
@@ -941,7 +959,7 @@ uint32_t Ext2::get_entry_data_block_and_number(const Inode& parent_inode, const 
         if (data_block == 0) continue;
 
         utils::vector<LinkedDirectoryEntry> current_block_entries;
-        this->read_directory_block(data_block, current_block_entries, m_sb.get_block_size());
+        this->read_directory_block(data_block, current_block_entries);
 
         for(size_t j = 0; j < current_block_entries.size(); j++)
         {
@@ -1057,4 +1075,108 @@ bool Ext2::remove_file(const utils::string& path, bool recursive)
 
     std::cout << (is_directory ? "Directory " : "File ") << path.c_str() << " removed successfully.\n";
     return true;
+}
+
+void Ext2::process_block(utils::vector<uint8_t>& file_data, uint32_t file_size, uint32_t& bytes_read, uint32_t block_num, uint8_t* block_buffer)
+{
+    uint32_t block_size = this->m_sb.get_block_size();
+
+    if (block_num == 0 || bytes_read >= file_size) return;
+
+    this->read_block(block_num, block_buffer, block_size);
+
+    uint32_t remaining_bytes_in_file = file_size - bytes_read;
+    uint32_t bytes_to_copy_from_block = (remaining_bytes_in_file < block_size) ? remaining_bytes_in_file : block_size;
+
+    for (uint32_t i = 0; i < bytes_to_copy_from_block; i++)
+    {
+        file_data.push_back(block_buffer[i]);
+    }
+    bytes_read += bytes_to_copy_from_block;
+}
+
+void Ext2::process_single_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer)
+{
+    utils::vector<uint32_t> direct_blocks = this->read_indirect_block_pointers(block_num);
+    for (size_t i = 0; i < direct_blocks.size() && bytes_read < file_size; i++)
+    {
+        this->process_block(file_data, file_size, bytes_read, direct_blocks[i], block_buffer);
+    }
+}
+
+void Ext2::process_double_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer)
+{
+    utils::vector<uint32_t> single_indirect_blocks = this->read_indirect_block_pointers(block_num);
+    for (size_t i = 0; i < single_indirect_blocks.size() && bytes_read < file_size; i++)
+    {
+        this->process_single_indirect_blocks(file_data, bytes_read, file_size, single_indirect_blocks[i], block_buffer);
+    }
+}
+
+void Ext2::process_triple_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer)
+{
+    utils::vector<uint32_t> double_indirect_blocks = this->read_indirect_block_pointers(block_num);
+    for (size_t i = 0; i < double_indirect_blocks.size() && bytes_read < file_size; i++)
+    {
+        this->process_double_indirect_blocks(file_data, bytes_read, file_size, double_indirect_blocks[i], block_buffer);
+    }
+}
+
+utils::vector<uint8_t> Ext2::read_file_data(const Inode& inode)
+{
+    uint32_t file_size = inode.m_fields.i_size;
+    utils::vector<uint8_t> file_data(file_size);
+
+    uint32_t block_size = this->m_sb.get_block_size();
+    uint8_t* block_buffer = new uint8_t[block_size];
+    uint32_t bytes_read = 0;
+
+    try
+    {
+        for (int i = 0; i < 12 && bytes_read < file_size; i++)
+        {
+            this->process_block(file_data, file_size, bytes_read, inode.m_fields.i_block[i], block_buffer);
+        }
+
+        if (bytes_read < file_size && inode.m_fields.i_block[12] != 0)
+        {
+            this->process_single_indirect_blocks(file_data, bytes_read, file_size, inode.m_fields.i_block[12], block_buffer);
+        }
+
+        if (bytes_read < file_size && inode.m_fields.i_block[13] != 0)
+        {
+            this->process_double_indirect_blocks(file_data, bytes_read, file_size, inode.m_fields.i_block[13], block_buffer);
+        }
+
+        if (bytes_read < file_size && inode.m_fields.i_block[14] != 0)
+        {
+            this->process_triple_indirect_blocks(file_data, bytes_read, file_size, inode.m_fields.i_block[14], block_buffer);
+        }
+    }
+    catch(const std::exception& e)
+    {
+        delete[] block_buffer;
+        throw;
+    }
+
+    delete[] block_buffer;
+    return file_data;
+}
+
+utils::vector<uint8_t> Ext2::read_file(const utils::string& path)
+{
+    uint32_t inode_num = 0;
+    Inode& inode = this->resolve_path(path, inode_num);
+
+    if (!(inode.m_fields.i_mode & Inode::Mode::EXT2_S_IFREG))
+    {
+        throw std::runtime_error("Ext2::read_file - Path does not point to a regular file");
+    }
+
+    utils::vector<uint8_t> file_data = this->read_file_data(inode);
+
+    inode.m_fields.i_atime = time(nullptr);
+    this->write_inode(inode, inode_num);
+
+    return file_data;
 }

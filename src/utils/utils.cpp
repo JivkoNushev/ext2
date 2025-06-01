@@ -85,3 +85,9 @@ void utils::clear_bit(uint8_t* bitmap, int bit)
 {
     bitmap[bit / 8] &= ~(1 << bit % 8);
 }
+
+
+void utils::print_utf8(utils::vector<uint8_t> data)
+{
+    std::cout.write((const char*)data.raw(), data.size());
+}

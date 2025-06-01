@@ -17,6 +17,8 @@ public:
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
     vector();
 
+    vector(size_t capacity);
+
     ~vector();
 
     vector(const vector<T>& other);
@@ -38,6 +40,8 @@ public:
     void push_back(T&& value);
 
     void clear() noexcept;
+
+    const T* raw() const;
 
     size_t size() const noexcept { return m_size; }
     bool empty() const noexcept { return m_size == 0; }
@@ -62,6 +66,14 @@ template<class T>
 utils::vector<T>::vector() :
     m_size(0),
     m_capacity(vector::DEFAULT_CAPACITY)
+{
+    this->m_data = new T[this->m_capacity];
+}
+
+template<class T>
+utils::vector<T>::vector(size_t capacity) :
+    m_size(0),
+    m_capacity(capacity)
 {
     this->m_data = new T[this->m_capacity];
 }
@@ -143,7 +155,6 @@ void utils::vector<T>::push_back(T&& value)
     this->m_data[this->m_size++] = std::move(value);
 }
 
-
 template<class T>
 void utils::vector<T>::clear() noexcept
 {
@@ -153,6 +164,12 @@ void utils::vector<T>::clear() noexcept
     }
 
     this->m_size = 0;
+}
+
+template<class T>
+const T* utils::vector<T>::raw() const
+{
+    return this->m_data;
 }
 
 template<class T>

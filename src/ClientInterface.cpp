@@ -109,6 +109,10 @@ void ClientInterface::run()
         {
             this->m_fs->tree(words[1].c_str());
         }
+        else if(words[0] == "cat")
+        {
+            this->m_fs->cat(words[1].c_str());
+        }
     }
 }
 

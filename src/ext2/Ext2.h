@@ -16,6 +16,7 @@ public:
 
 // ---------------- PUBLIC METHODS ----------------
     void tree(const char* path) const override;
+    void cat(const char* path) const override;
 
 private:
 // ---------------- PRIVATE VARIABLES ----------------
@@ -35,15 +36,15 @@ private:
 
     utils::vector<LinkedDirectoryEntry> read_dir_entries(const Inode& inode) const;
 
-    void read_directory_block(uint32_t block_num, utils::vector<LinkedDirectoryEntry>& entries, uint32_t block_size) const;
+    void read_directory_block(uint32_t block_num, utils::vector<LinkedDirectoryEntry>& entries) const;
 
-    utils::vector<uint32_t> read_indirect_block_pointers(uint32_t indirect_block_num, uint32_t block_size) const;
+    utils::vector<uint32_t> read_indirect_block_pointers(uint32_t indirect_block_num) const;
 
-    void read_single_indirect_block(uint32_t indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const;
+    void read_single_indirect_block(uint32_t indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const;
 
-    void read_double_indirect_block(uint32_t double_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const;
+    void read_double_indirect_block(uint32_t double_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const;
 
-    void read_triple_indirect_block(uint32_t triple_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries, uint32_t block_size) const;
+    void read_triple_indirect_block(uint32_t triple_indirect_block_num, utils::vector<LinkedDirectoryEntry>& all_entries) const;
 
     void print_tree(uint32_t inode_idx, const utils::string& prefix = utils::string(), bool is_last = true) const;
 
@@ -113,4 +114,16 @@ private:
     void remove_entry_children(const utils::string& path, const Inode& entry_inode);
 
     bool remove_file(const utils::string& path, bool recursive);
+
+    void process_block(utils::vector<uint8_t>& file_data, uint32_t file_size, uint32_t& bytes_read, uint32_t block_num, uint8_t* block_buffer);
+
+    void process_single_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer);
+
+    void process_double_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer);
+
+    void process_triple_indirect_blocks(utils::vector<uint8_t>& file_data, uint32_t& bytes_read, uint32_t file_size, uint32_t block_num, uint8_t* block_buffer);
+
+    utils::vector<uint8_t> read_file_data(const Inode& inode);
+
+    utils::vector<uint8_t> read_file(const utils::string& path);
 };

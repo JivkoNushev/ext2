@@ -29,7 +29,7 @@ public:
 
 // ---------------- PUBLIC VIRTUAL METHODS ----------------
     virtual void tree(const char* path) const = 0;
-    // virtual void cat(const char* path) = 0;
+    virtual void cat(const char* path) const = 0;
     // virtual void touch(const char* path) = 0;
     // virtual void mkdir(const char* path) = 0;
     // virtual void rm(const char* path, bool recursive = false) = 0;

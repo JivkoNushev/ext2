@@ -25,4 +25,6 @@ namespace utils
     void set_bit(uint8_t* bitmap, int bit);
 
     void clear_bit(uint8_t* bitmap, int bit);
+
+    void print_utf8(utils::vector<uint8_t> data);
 }
