@@ -52,7 +52,6 @@ ClientInterface::ClientInterface(int argc, char** argv)
             if(!std::ifstream(argv[i]).good()) throw std::invalid_argument("[Error] Invalid File Path");
 
             file_path = new char[utils::strlen(argv[i] + 1)];
-            if(!file_path) throw std::runtime_error("[Error] Insufficient Memory");
 
             utils::strcpy(file_path, argv[i]);
         }
@@ -97,8 +96,8 @@ void ClientInterface::run()
 {
     while(this->m_running)
     {
-        std::cin.getline(this->m_buffer, 1024);
-        this->m_buffer[1023] = '\0';
+        std::cin.getline(this->m_buffer, ClientInterface::BUFFER_SIZE);
+        this->m_buffer[ClientInterface::BUFFER_SIZE - 1] = '\0';
         utils::vector<utils::string> words = utils::split_words((const char*)this->m_buffer);
         if(0 == utils::strcmp(this->m_buffer, "exit"))
         {
@@ -191,6 +190,7 @@ void ClientInterface::print_shell_help() const
 << "  write <filepath>           - write a single line to <filepath>, overwriting existing content\n"
 << "  append <filepath>          - append a single line to <filepath>\n"
 << "  help                       - display this help message\n"
-<< "  exit                       - exit the shell\n\n";
+<< "  exit                       - exit the shell\n"
+<< '\n';
 
 }

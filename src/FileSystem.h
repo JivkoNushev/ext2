@@ -42,7 +42,7 @@ private:
     bool m_format = false;
 
 // ---------------- PRIVATE METHODS ----------------
-    void _free();
-    void _copy_from(const FileSystem& fs);
-    void _move_from(FileSystem&& fs);
+    void free();
+    void copy_from(const FileSystem& fs);
+    void move_from(FileSystem&& fs);
 };

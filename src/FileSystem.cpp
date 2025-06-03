@@ -1,66 +1,77 @@
-#include <cstring>
-#include <iostream>
 #include <utility>
 
+#include "utils/cstring.h"
 #include "FileSystem.h"
 
 FileSystem::FileSystem() {}
 
 FileSystem::FileSystem(const char *device_path, FSType type, bool format)
-    : m_type(type), m_format(format) {
-  this->m_device_path = new char[std::strlen(device_path) + 1];
-  if (!device_path)
-    return;
-
-  std::strcpy(this->m_device_path, device_path);
+    : m_type(type), m_format(format)
+{
+    this->m_device_path = new char[utils::strlen(device_path) + 1];
+    utils::strcpy(this->m_device_path, device_path);
 }
 
-FileSystem::~FileSystem() {
-  this->_free();
-
-  this->m_device_path = nullptr;
+FileSystem::~FileSystem()
+{
+    this->free();
+    this->m_device_path = nullptr;
 }
 
-FileSystem::FileSystem(const FileSystem &fs) { this->_copy_from(fs); }
-
-FileSystem::FileSystem(FileSystem &&fs) noexcept {
-  this->_move_from(std::move(fs));
+FileSystem::FileSystem(const FileSystem &fs)
+{
+    this->copy_from(fs);
 }
 
-FileSystem &FileSystem::operator=(const FileSystem &fs) {
-  if (this != &fs) {
-    this->_free();
-    this->_copy_from(fs);
-  }
-
-  return *this;
+FileSystem::FileSystem(FileSystem &&fs) noexcept
+{
+    this->move_from(std::move(fs));
 }
 
-FileSystem &FileSystem::operator=(FileSystem &&fs) noexcept {
-  if (this != &fs) {
-    this->_free();
-    this->_move_from(std::move(fs));
-  }
+FileSystem &FileSystem::operator=(const FileSystem &fs)
+{
+    if (this != &fs)
+    {
+        this->free();
+        this->copy_from(fs);
+    }
 
-  return *this;
+    return *this;
 }
 
-const char *FileSystem::get_device_path() const { return this->m_device_path; }
+FileSystem &FileSystem::operator=(FileSystem &&fs) noexcept
+{
+    if (this != &fs)
+    {
+        this->free();
+        this->move_from(std::move(fs));
+    }
 
-void FileSystem::_free() { delete[] this->m_device_path; }
-
-void FileSystem::_copy_from(const FileSystem &fs) {
-  this->m_type = fs.m_type;
-  this->m_device_path = new char[std::strlen(fs.m_device_path) + 1];
-  if (!this->m_device_path)
-    return;
-
-  std::strcpy(this->m_device_path, fs.m_device_path);
+    return *this;
 }
 
-void FileSystem::_move_from(FileSystem &&fs) {
-  this->m_type = fs.m_type;
-  this->m_device_path = fs.m_device_path;
+const char *FileSystem::get_device_path() const
+{
+    return this->m_device_path;
+}
 
-  fs.m_device_path = nullptr;
+void FileSystem::free()
+{
+    delete[] this->m_device_path;
+}
+
+void FileSystem::copy_from(const FileSystem &fs)
+{
+    this->m_type = fs.m_type;
+
+    this->m_device_path = new char[utils::strlen(fs.m_device_path) + 1];
+    utils::strcpy(this->m_device_path, fs.m_device_path);
+}
+
+void FileSystem::move_from(FileSystem &&fs)
+{
+    this->m_type = fs.m_type;
+    this->m_device_path = fs.m_device_path;
+
+    fs.m_device_path = nullptr;
 }
