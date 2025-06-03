@@ -22,6 +22,7 @@ ${EXT2_IMG}:
 	sudo mkdir -p /mnt/EXT2
 	sudo mount /dev/loop0 /mnt/EXT2
 
+	sudo rm -rf /mnt/EXT2/*
 	sudo mkdir -p /mnt/EXT2/dir1/dir2
 	sudo touch /mnt/EXT2/file1
 	sudo echo "Contents in file2 for testing" | sudo tee /mnt/EXT2/dir1/file2 > /dev/null

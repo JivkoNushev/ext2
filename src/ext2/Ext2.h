@@ -66,7 +66,15 @@ private:
 
     void init_directory_block(Inode& new_dir_inode, uint32_t self_inode_num, uint32_t parent_inode_num);
 
-    bool try_split_active_entry(LinkedDirectoryEntry* entry, uint8_t* buffer, uint32_t offset, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len);
+    bool try_split_active_entry(
+        LinkedDirectoryEntry* entry,
+        uint8_t* buffer,
+        uint32_t offset,
+        uint32_t inode_num,
+        const utils::string& name,
+        uint8_t file_type,
+        uint16_t entry_len
+    );
 
     bool try_reuse_hole(LinkedDirectoryEntry* hole, uint32_t inode_num, const utils::string& name, uint8_t file_type, uint16_t entry_len);
 
@@ -94,11 +102,16 @@ private:
     void write_sb(const SuperBlock& super_block_to_write);
 
     void commit_file(
-        bool is_directory, uint32_t new_block_num,
-        const Inode& new_inode, uint32_t new_inode_num,
-        const Inode& parent_inode, uint32_t parent_inode_num,
-        uint8_t* inode_bitmap, uint32_t inode_bitmap_num,
-        uint8_t* block_bitmap, uint32_t block_bitmap_num
+        bool is_directory,
+        uint32_t new_block_num,
+        const Inode& new_inode,
+        uint32_t new_inode_num,
+        const Inode& parent_inode,
+        uint32_t parent_inode_num,
+        uint8_t* inode_bitmap,
+        uint32_t inode_bitmap_num,
+        uint8_t* block_bitmap,
+        uint32_t block_bitmap_num
     );
 
     void create_file(const utils::string& path, bool is_directory);
@@ -131,18 +144,41 @@ private:
 
     utils::vector<uint8_t> read_file(const utils::string& path);
 
+    void allocate_and_fill_data_block(
+        uint32_t inode_num, 
+        uint32_t& block_num, 
+        const utils::vector<uint8_t>& data, 
+        uint32_t& data_idx, 
+        uint32_t& total_blocks_used_by_inode, 
+        uint8_t* block_buffer, 
+        uint8_t*& block_bitmap, 
+        uint32_t& block_bitmap_num
+    );
 
-    void allocate_and_fill_data_block(uint32_t inode_num, uint32_t& target_block_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
+    void process_direct_block_writes(
+        Inode& inode,
+        uint32_t inode_num,
+        const utils::vector<uint8_t>& data,
+        uint32_t& data_idx,
+        uint32_t& total_blocks_used_by_inode,
+        uint8_t* block_buffer,
+        uint8_t*& block_bitmap,
+        uint32_t& block_bitmap_num
+    );
 
-
-    void process_direct_block_writes(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
-
-
-    bool process_indirect_block_writes_recursive(uint32_t inode_num, int level, uint32_t* indirect_block_id_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num);
-
+    bool process_indirect_block_writes(
+        uint32_t inode_num, 
+        int level, 
+        uint32_t* block_num, 
+        const utils::vector<uint8_t>& data, 
+        uint32_t& data_idx, 
+        uint32_t& total_blocks_used_by_inode,
+        uint8_t* block_buffer,
+        uint8_t*& block_bitmap,
+        uint32_t& block_bitmap_num
+    );
 
     void perform_inode_data_write(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data_to_write);
-
 
     void deallocate_direct_blocks(Inode& inode);
 

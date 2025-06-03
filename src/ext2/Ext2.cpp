@@ -39,7 +39,6 @@ void Ext2::load_ext2()
     this->m_bgdt.read(this->get_device_path());
 
     this->m_it = InodeTable(this->m_sb, this->m_bgdt, this->get_device_path());
-    this->m_it.read(get_device_path());
 }
 
 void Ext2::tree(const char* path) const noexcept
@@ -48,11 +47,11 @@ void Ext2::tree(const char* path) const noexcept
 
     try
     {
-        uint32_t start_inode_num = 0;
-        ((Ext2*)this)->resolve_path(path, start_inode_num);
+        uint32_t inode_num = 0;
+        ((Ext2*)this)->resolve_path(path, inode_num);
 
         std::cout << path << '\n';
-        this->print_tree(start_inode_num); 
+        this->print_tree(inode_num);
     }
     catch (const std::exception& e)
     {
@@ -130,7 +129,7 @@ void Ext2::print_tree(uint32_t inode_idx, const utils::string& prefix, bool is_l
     const Inode& current_inode_obj = ((InodeTable&)this->m_it).get_inode(inode_idx);
     if (!(current_inode_obj.m_fields.i_mode & Inode::Mode::EXT2_S_IFDIR)) return;
 
-    utils::vector<LinkedDirectoryEntry> entries = this->read_dir_entries(current_inode_obj); 
+    utils::vector<LinkedDirectoryEntry> entries = this->read_dir_entries(current_inode_obj);
 
     utils::vector<LinkedDirectoryEntry> children_to_display;
     for (size_t i = 0; i < entries.size(); i++)
@@ -160,7 +159,7 @@ void Ext2::print_tree(uint32_t inode_idx, const utils::string& prefix, bool is_l
 
         std::cout << (is_child_inode_dir ? "/\n" : "\n");
 
-        if (is_child_inode_dir )
+        if (is_child_inode_dir)
         {
             utils::string new_prefix = prefix + (is_last_sibling ? "    " : "│   ");
             this->print_tree(child_entry.inode, new_prefix, is_last_sibling);
@@ -209,7 +208,6 @@ utils::vector<LinkedDirectoryEntry> Ext2::read_dir_entries(const Inode& dir_inod
 void Ext2::read_directory_block(uint32_t data_block_num, utils::vector<LinkedDirectoryEntry>& entries) const
 {
     uint32_t block_size = this->m_sb.get_block_size();
-
     uint8_t* block_data = new uint8_t[block_size];
 
     try
@@ -254,11 +252,9 @@ void Ext2::read_directory_block(uint32_t data_block_num, utils::vector<LinkedDir
 utils::vector<uint32_t> Ext2::read_indirect_block_pointers(uint32_t indirect_block_num) const
 {
     uint32_t block_size = this->m_sb.get_block_size();
-
-    utils::vector<uint32_t> pointers;
-
     uint8_t* indirect_block_data = new uint8_t[block_size];
 
+    utils::vector<uint32_t> pointers;
     try
     {
         this->read_block(indirect_block_num, indirect_block_data, block_size);
@@ -352,7 +348,7 @@ Inode& Ext2::resolve_path(const utils::string& path, uint32_t& out_inode_num)
             throw std::runtime_error("Ext::resolve_path - component is not a directory.");
         }
 
-        utils::vector<LinkedDirectoryEntry> entries = read_dir_entries(*current_inode);
+        utils::vector<LinkedDirectoryEntry> entries = this->read_dir_entries(*current_inode);
 
         current_inode_num = this->get_entry_with_name(entries, component_name);
         if(0 == current_inode_num)
@@ -423,13 +419,14 @@ void Ext2::write_block(uint32_t block_number, uint8_t* buffer, uint32_t block_si
     ofs.close();
 }
 
-
 uint16_t Ext2::calculate_rec_len(uint8_t name_length)
 {
-    uint16_t base_size = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t);
-    return (base_size + name_length + 3) & ~3;
-}
+    constexpr uint16_t HEADER_SIZE = 8;
+    uint16_t total_size = HEADER_SIZE + name_length;
 
+    // round up to the next multiple of 4
+    return (total_size + 3) & ~3;
+}
 
 void Ext2::check_entry_name_validity(const utils::string& name)
 {
@@ -462,7 +459,7 @@ uint32_t Ext2::allocate(uint32_t preferred_group, uint16_t items_per_group, uint
             this->read_block(out_bitmap_num, out_bitmap, block_size);
             int free_bit_idx = utils::find_first_free_bit(out_bitmap, block_size);
 
-            if (free_bit_idx != -1 && (uint32_t)(free_bit_idx) < items_per_group)
+            if (free_bit_idx != -1 && (uint32_t)(free_bit_idx) < items_per_group) // should always find
             {
                 utils::set_bit(out_bitmap, free_bit_idx);
                 return (current_group_idx * items_per_group) + free_bit_idx;
@@ -483,8 +480,7 @@ uint32_t Ext2::allocate(uint32_t preferred_group, uint16_t items_per_group, uint
 
 uint32_t Ext2::allocate_inode(uint32_t parent_inode, uint8_t*& out_inode_bitmap, uint32_t& out_inode_bitmap_num)
 {
-    uint32_t preferred_group = (parent_inode > 0 && parent_inode <= this->m_sb.m_fields.s_inodes_count) ? 
-                               (parent_inode - 1) /  this->m_sb.m_fields.s_inodes_per_group : 0;
+    uint32_t preferred_group = (parent_inode - 1) /  this->m_sb.m_fields.s_inodes_per_group;
 
     uint32_t inode_num = this->allocate(preferred_group, this->m_sb.m_fields.s_inodes_per_group, out_inode_bitmap, out_inode_bitmap_num);
     if(0 == inode_num) return 0;
@@ -494,8 +490,7 @@ uint32_t Ext2::allocate_inode(uint32_t parent_inode, uint8_t*& out_inode_bitmap,
 
 uint32_t Ext2::allocate_block(uint32_t inode_num, uint8_t*& out_block_bitmap_data, uint32_t& out_block_bitmap_num)
 {
-    uint32_t preferred_group = (inode_num > 0 && inode_num <= this->m_sb.m_fields.s_inodes_count && this->m_sb.m_fields.s_inodes_per_group > 0) ?
-                               (inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group : 0;
+    uint32_t preferred_group = (inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group;
 
     uint32_t block_num = this->allocate(preferred_group, this->m_sb.m_fields.s_blocks_per_group, out_block_bitmap_data, out_block_bitmap_num);
     if(0 == block_num) return 0;
@@ -804,10 +799,7 @@ void Ext2::create_file(const utils::string& path, bool is_directory)
     }
 
     delete[] inode_bitmap;
-    inode_bitmap= nullptr;
-
     delete[] block_bitmap;
-    block_bitmap = nullptr;
 
     std::cout << (is_directory ? "Directory" : "File") << " " << path.c_str() << " created successfully.\n";
 }
@@ -835,7 +827,7 @@ void Ext2::deallocate_inode_on_disk(uint32_t inode_num, bool is_directory)
         if (utils::is_bit_set(inode_bitmap, bit))
         {
             utils::clear_bit(inode_bitmap, bit);
-            this->write_block(inode_bitmap_num, inode_bitmap, block_size); 
+            this->write_block(inode_bitmap_num, inode_bitmap, block_size);
 
             bgd.m_fields.bg_free_inodes_count++;
             if (is_directory && bgd.m_fields.bg_used_dirs_count > 0) bgd.m_fields.bg_used_dirs_count--;
@@ -874,7 +866,7 @@ void Ext2::deallocate_block_on_disk(uint32_t block_num)
         if (utils::is_bit_set(block_bitmap, bit))
         {
             utils::clear_bit(block_bitmap, bit);
-            this->write_block(block_bitmap_num, block_bitmap, block_size); 
+            this->write_block(block_bitmap_num, block_bitmap, block_size);
 
             bgd.m_fields.bg_free_blocks_count++;
             this->m_sb.m_fields.s_free_blocks_count++;
@@ -885,7 +877,7 @@ void Ext2::deallocate_block_on_disk(uint32_t block_num)
     catch (const std::exception& e)
     {
         delete[] block_bitmap;
-        throw; 
+        throw;
     }
 }
 
@@ -926,16 +918,19 @@ void Ext2::commit_deallocated_file(Inode& entry_inode, uint32_t entry_inode_num,
         this->write_bgd(this->m_bgdt.get_bgd(i), i);
     }
 
-    this->m_sb.write(this->get_device_path()); 
+    this->m_sb.write(this->get_device_path());
 
     this->m_it.get_inode(parent_inode_num) = parent_inode;
-    if (entry_inode.m_fields.i_links_count == 0) {
-        Inode deallocated_marker; 
-        deallocated_marker.m_fields.i_mode = 0; 
+    if (0 == entry_inode.m_fields.i_links_count)
+    {
+        Inode deallocated_marker;
+        deallocated_marker.m_fields.i_mode = 0;
         deallocated_marker.m_fields.i_links_count = 0;
         deallocated_marker.m_fields.i_dtime = entry_inode.m_fields.i_dtime;
         this->m_it.get_inode(entry_inode_num) = deallocated_marker;
-    } else {
+    }
+    else
+    {
         this->m_it.get_inode(entry_inode_num) = entry_inode;
     }
 
@@ -1211,40 +1206,39 @@ utils::vector<uint8_t> Ext2::read_file(const utils::string& path)
     return file_data;
 }
 
-void Ext2::allocate_and_fill_data_block(uint32_t inode_num, uint32_t& target_block_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num)
+void Ext2::allocate_and_fill_data_block(uint32_t inode_num, uint32_t& block_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* block_buffer, uint8_t*& block_bitmap, uint32_t& block_bitmap_num)
 {
     uint32_t block_size = this->m_sb.get_block_size();
-    uint32_t new_block_num = this->allocate_block(inode_num, block_bitmap_buffer, current_block_bitmap_num);
-    if (0 == new_block_num)
+    block_num = this->allocate_block(inode_num, block_bitmap, block_bitmap_num);
+    if (0 == block_num)
     {
         throw std::runtime_error("Ext2::allocate_and_fill_data_block - Failed to allocate data block.");
     }
-    target_block_storage_location = new_block_num;
 
     for (uint32_t i = 0; i < block_size; i++)
     {
         if (data_idx < data.size())
         {
-            temp_data_chunk_buffer[i] = data[data_idx++];
+            block_buffer[i] = data[data_idx++];
         }
         else
         {
-            temp_data_chunk_buffer[i] = 0;
+            block_buffer[i] = 0;
         }
     }
 
-    this->write_block(new_block_num, temp_data_chunk_buffer, block_size);
+    this->write_block(block_num, block_buffer, block_size);
     total_blocks_used_by_inode++;
 
-    if (block_bitmap_buffer)
+    if (block_bitmap)
     {
-        this->write_block(current_block_bitmap_num, block_bitmap_buffer, block_size);
-        delete[] block_bitmap_buffer;
-        block_bitmap_buffer = nullptr;
+        this->write_block(block_bitmap_num, block_bitmap, block_size);
+        delete[] block_bitmap;
+        block_bitmap = nullptr;
     }
 }
 
-void Ext2::process_direct_block_writes(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num)
+void Ext2::process_direct_block_writes(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* block_buffer, uint8_t*& block_bitmap, uint32_t& block_bitmap_num)
 {
     for (int i = 0; i < 12; i++)
     {
@@ -1256,86 +1250,87 @@ void Ext2::process_direct_block_writes(Inode& inode, uint32_t inode_num, const u
             data, 
             data_idx, 
             total_blocks_used_by_inode,
-            temp_data_chunk_buffer, 
-            block_bitmap_buffer, 
-            current_block_bitmap_num
+            block_buffer, 
+            block_bitmap, 
+            block_bitmap_num
         );
     }
 }
 
-bool Ext2::process_indirect_block_writes_recursive(uint32_t inode_num, int level, uint32_t* indirect_block_id_storage_location, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* temp_data_chunk_buffer, uint8_t*& block_bitmap_buffer, uint32_t& current_block_bitmap_num)
+bool Ext2::process_indirect_block_writes(uint32_t inode_num, int level, uint32_t* block_num, const utils::vector<uint8_t>& data, uint32_t& data_idx, uint32_t& total_blocks_used_by_inode, uint8_t* block_buffer, uint8_t*& block_bitmap, uint32_t& block_bitmap_num)
 {
-    uint32_t fs_block_size = this->m_sb.get_block_size();
-    uint32_t current_indirect_block_bn = *indirect_block_id_storage_location;
+    uint32_t block_size = this->m_sb.get_block_size();
 
-    if (current_indirect_block_bn == 0)
+    if (0 == *block_num)
     {
-        current_indirect_block_bn = this->allocate_block(inode_num, block_bitmap_buffer, current_block_bitmap_num);
-        if (current_indirect_block_bn == 0)
+        *block_num= this->allocate_block(inode_num, block_bitmap, block_bitmap_num);
+        if (0 == *block_num)
         {
             throw std::runtime_error("Ext2::process_indirect_block_writes_recursive - Failed to allocate an indirect block.");
         }
 
-
-        *indirect_block_id_storage_location = current_indirect_block_bn;
         total_blocks_used_by_inode++;
-        if (block_bitmap_buffer)
+        if (block_bitmap)
         {
-            this->write_block(current_block_bitmap_num, block_bitmap_buffer, fs_block_size);
-            delete[] block_bitmap_buffer;
-            block_bitmap_buffer = nullptr;
+            this->write_block(block_bitmap_num, block_bitmap, block_size);
+            delete[] block_bitmap;
+            block_bitmap = nullptr;
         }
     }
 
-    uint32_t num_pointers_per_block = fs_block_size / sizeof(uint32_t);
-    uint32_t* pointers_for_current_indirect_block = new uint32_t[num_pointers_per_block]{};
+    uint32_t num_pointers_in_block = block_size / sizeof(uint32_t);
+    uint32_t* block_pointers= new uint32_t[num_pointers_in_block]{};
 
-    bool data_processed_at_this_level = false;
-    for (uint32_t i = 0; i < num_pointers_per_block; i++)
+    bool processed = false;
+    try
     {
-        if (data_idx >= data.size()) break;
-
-        if (level > 0)
+        for (uint32_t i = 0; i < num_pointers_in_block; i++)
         {
-            if(this->process_indirect_block_writes_recursive(
-                inode_num, 
-                level - 1, 
-                &pointers_for_current_indirect_block[i], 
-                data, 
-                data_idx, 
-                total_blocks_used_by_inode, 
-                temp_data_chunk_buffer, 
-                block_bitmap_buffer, 
-                current_block_bitmap_num
-            ))
+            if (data_idx >= data.size()) break;
+
+            if (level > 0)
             {
-                data_processed_at_this_level = true;
+                if(this->process_indirect_block_writes(
+                    inode_num, 
+                    level - 1, 
+                    &block_pointers[i], 
+                    data, 
+                    data_idx, 
+                    total_blocks_used_by_inode, 
+                    block_buffer, 
+                    block_bitmap, 
+                    block_bitmap_num
+                ))
+                {
+                    processed = true;
+                }
+            }
+            else
+            {
+                this->allocate_and_fill_data_block(
+                    inode_num, 
+                    block_pointers[i], 
+                    data, 
+                    data_idx, 
+                    total_blocks_used_by_inode, 
+                    block_buffer, 
+                    block_bitmap, 
+                    block_bitmap_num
+                );
+                processed = true;
             }
         }
-        else
-        {
-            this->allocate_and_fill_data_block(
-                inode_num, 
-                pointers_for_current_indirect_block[i], 
-                data, 
-                data_idx, 
-                total_blocks_used_by_inode, 
-                temp_data_chunk_buffer, 
-                block_bitmap_buffer, 
-                current_block_bitmap_num
-            );
-            data_processed_at_this_level = true;
-        }
-    }
 
-    // write if it's newly allocated or if data was processed into it
-    if (data_processed_at_this_level || *indirect_block_id_storage_location == current_indirect_block_bn)
+        this->write_block(*block_num, (uint8_t*)block_pointers, block_size);
+    }
+    catch (const std::exception& e)
     {
-         this->write_block(current_indirect_block_bn, (uint8_t*)pointers_for_current_indirect_block, fs_block_size);
+        delete[] block_pointers;
+        throw;
     }
-    delete[] pointers_for_current_indirect_block;
 
-    return data_processed_at_this_level;
+    delete[] block_pointers;
+    return processed;
 }
 
 void Ext2::perform_inode_data_write(Inode& inode, uint32_t inode_num, const utils::vector<uint8_t>& data_to_write)
@@ -1344,27 +1339,27 @@ void Ext2::perform_inode_data_write(Inode& inode, uint32_t inode_num, const util
     uint32_t total_blocks_used_by_inode = 0;
     uint32_t block_size = this->m_sb.get_block_size();
 
-    uint8_t* temp_data_chunk_buffer = new uint8_t[block_size];
-    uint8_t* block_bitmap_buffer = nullptr; 
-    uint32_t current_block_bitmap_num = 0;  
+    uint8_t* block_buffer = new uint8_t[block_size];
+    uint8_t* block_bitmap = nullptr;
+    uint32_t block_bitmap_num = 0;
 
     try
     {
-        this->process_direct_block_writes(inode, inode_num, data_to_write, data_idx, total_blocks_used_by_inode, temp_data_chunk_buffer, block_bitmap_buffer, current_block_bitmap_num);
+        this->process_direct_block_writes(inode, inode_num, data_to_write, data_idx, total_blocks_used_by_inode, block_buffer, block_bitmap, block_bitmap_num);
 
         if (data_idx < data_to_write.size())
         {
-            this->process_indirect_block_writes_recursive(inode_num, 0, &inode.m_fields.i_block[12], data_to_write, data_idx, total_blocks_used_by_inode, temp_data_chunk_buffer, block_bitmap_buffer, current_block_bitmap_num);
+            this->process_indirect_block_writes(inode_num, 0, &inode.m_fields.i_block[12], data_to_write, data_idx, total_blocks_used_by_inode, block_buffer, block_bitmap, block_bitmap_num);
         }
 
         if (data_idx < data_to_write.size())
         {
-            this->process_indirect_block_writes_recursive(inode_num, 1, &inode.m_fields.i_block[13], data_to_write, data_idx, total_blocks_used_by_inode, temp_data_chunk_buffer, block_bitmap_buffer, current_block_bitmap_num);
+            this->process_indirect_block_writes(inode_num, 1, &inode.m_fields.i_block[13], data_to_write, data_idx, total_blocks_used_by_inode, block_buffer, block_bitmap, block_bitmap_num);
         }
 
         if (data_idx < data_to_write.size())
         {
-            this->process_indirect_block_writes_recursive(inode_num, 2, &inode.m_fields.i_block[14], data_to_write, data_idx, total_blocks_used_by_inode, temp_data_chunk_buffer, block_bitmap_buffer, current_block_bitmap_num);
+            this->process_indirect_block_writes(inode_num, 2, &inode.m_fields.i_block[14], data_to_write, data_idx, total_blocks_used_by_inode, block_buffer, block_bitmap, block_bitmap_num);
         }
 
         inode.m_fields.i_size = data_to_write.size();
@@ -1372,13 +1367,13 @@ void Ext2::perform_inode_data_write(Inode& inode, uint32_t inode_num, const util
     }
     catch (const std::runtime_error& e)
     {
-        delete[] temp_data_chunk_buffer;
-        delete[] block_bitmap_buffer;
+        delete[] block_buffer;
+        delete[] block_bitmap;
         throw; 
     }
 
-    delete[] temp_data_chunk_buffer;
-    delete[] block_bitmap_buffer;
+    delete[] block_buffer;
+    delete[] block_bitmap;
 }
 
 void Ext2::deallocate_direct_blocks(Inode& inode)
@@ -1440,7 +1435,7 @@ void Ext2::deallocate_inode_content(Inode& inode)
     inode.m_fields.i_blocks = 0;
 }
 
-void Ext2::write_file(const utils::string& path, const utils::vector<uint8_t>& data_to_write_param, bool append)
+void Ext2::write_file(const utils::string& path, const utils::vector<uint8_t>& data_to_write, bool append)
 {
     uint32_t inode_num = 0;
     Inode& inode = this->resolve_path(path, inode_num);
@@ -1454,14 +1449,14 @@ void Ext2::write_file(const utils::string& path, const utils::vector<uint8_t>& d
     if (append)
     {
         final_data_to_write = this->read_file_data(inode);
-        for(size_t i = 0; i < data_to_write_param.size(); i++)
+        for(size_t i = 0; i < data_to_write.size(); i++)
         {
-            final_data_to_write.push_back(data_to_write_param[i]);
+            final_data_to_write.push_back(data_to_write[i]);
         }
     }
     else
     {
-        final_data_to_write = data_to_write_param;
+        final_data_to_write = data_to_write;
     }
 
     this->deallocate_inode_content(inode);
