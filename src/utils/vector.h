@@ -46,8 +46,9 @@ public:
 
     const T* raw() const;
 
-    size_t size() const noexcept { return m_size; }
-    bool empty() const noexcept { return m_size == 0; }
+    size_t size() const noexcept;
+
+    bool empty() const noexcept;
 
 private:
 // ---------------- PRIVATE VARIABLES ----------------
@@ -185,6 +186,18 @@ template<class T>
 const T* utils::vector<T>::raw() const
 {
     return this->m_data;
+}
+
+template<class T>
+size_t utils::vector<T>::size() const noexcept
+{
+    return this->m_size;
+}
+
+template<class T>
+bool utils::vector<T>::empty() const noexcept
+{
+    return 0 == this->m_size;
 }
 
 template<class T>

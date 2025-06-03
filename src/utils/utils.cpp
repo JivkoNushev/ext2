@@ -35,7 +35,6 @@ utils::vector<utils::string> utils::split_words(const utils::string& line)
     return utils::split_str(line, ' ');
 }
 
-
 utils::string utils::get_entry_name(const utils::string& path)
 {
     std::optional<size_t> last_slash_pos = path.find_last_of('/');
@@ -85,7 +84,6 @@ void utils::clear_bit(uint8_t* bitmap, int bit)
 {
     bitmap[bit / 8] &= ~(1 << bit % 8);
 }
-
 
 void utils::print_utf8(utils::vector<uint8_t> data)
 {

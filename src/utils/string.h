@@ -9,6 +9,7 @@ namespace utils
 class string
 {
 public:
+    static constexpr const size_t DEFAULT_CAPACITY = 16;
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
     string();
     string(size_t capacity);
@@ -59,13 +60,12 @@ private:
     size_t m_capacity = 0;
 
 // ---------------- PRIVATE METHODS ----------------
-    void reallocate_and_copy(size_t capacity);
+    void realloc(size_t capacity);
     void free();
     void copy_from(const string& other);
     void copy_from(const char* s);
     void move_from(string&& other);
 };
-
 
 string operator+(const utils::string& lhs, const utils::string& rhs);
 string operator+(const utils::string& lhs, const char* rhs);

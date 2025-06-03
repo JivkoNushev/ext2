@@ -5,7 +5,7 @@
 
 utils::string::string() :
     m_size(0),
-    m_capacity(16)
+    m_capacity(string::DEFAULT_CAPACITY)
 {
     this->m_data = new char[this->m_capacity]{};
 }
@@ -19,20 +19,19 @@ utils::string::string(size_t capacity) :
 
 utils::string::string(const char* s, size_t count)
 {
-    if (s && count > 0)
+    if(!s || 0 == count)
     {
-        this->m_size = count;
-        this->m_capacity = this->m_size + 1;
-        this->m_data = new char[this->m_capacity];
-        utils::memcpy(this->m_data, s, this->m_size);
-        this->m_data[this->m_size] = '\0';
+        this->m_size = 0;
+        this->m_capacity = string::DEFAULT_CAPACITY;
+        this->m_data = new char[this->m_capacity]{};
+        return;
     }
-    else
-    {
-        this->m_data = new char[16];
-        this->m_data[0] = '\0';
-        this->m_capacity = 16;
-    }
+
+    this->m_size = count;
+    this->m_capacity = this->m_size + 1;
+    this->m_data = new char[this->m_capacity];
+    utils::memcpy(this->m_data, s, this->m_size);
+    this->m_data[this->m_size] = '\0';
 }
 
 utils::string::~string()
@@ -110,10 +109,10 @@ utils::string& utils::string::operator+=(const utils::string& other)
     size_t new_length = this->m_size + other.m_size;
     if (new_length + 1 > this->m_capacity)
     {
-        reallocate_and_copy(new_length); 
+        this->realloc(new_length);
     }
 
-    utils::strcat(this->m_data, other.m_data); 
+    utils::strcat(this->m_data, other.m_data);
     this->m_size = new_length;
 
     return *this;
@@ -127,7 +126,7 @@ utils::string& utils::string::operator+=(const char* s)
     size_t new_length = this->m_size + s_len;
     if (new_length + 1 > this->m_capacity)
     {
-        reallocate_and_copy(new_length);
+        this->realloc(new_length);
     }
 
     utils::strcat(this->m_data, s);
@@ -199,7 +198,7 @@ char utils::string::back() const
     return this->m_data[this->m_size - 1];
 }
 
-void utils::string::reallocate_and_copy(size_t capacity)
+void utils::string::realloc(size_t capacity)
 {
     size_t new_capacity = capacity + 1;
     if (new_capacity <= this->m_capacity && this->m_data != nullptr) return;
