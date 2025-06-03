@@ -7,12 +7,9 @@ BlockGroupDescriptorTable::BlockGroupDescriptorTable() :
     Block(0, 0)
 {}
 
-BlockGroupDescriptorTable::BlockGroupDescriptorTable(const SuperBlock& sb, uint16_t bg) :
+BlockGroupDescriptorTable::BlockGroupDescriptorTable(const SuperBlock& sb) :
     Block(sb.get_bg_count() * sizeof(BlockGroupDescriptor::Fields), BlockGroupDescriptorTable::OFFSET)
 {
-    //TODO: Use to initalize bgdt in another bg
-    (void)bg;
-
     this->m_gd_count = sb.get_bg_count();
     this->m_table = new BlockGroupDescriptor[this->m_gd_count];
 

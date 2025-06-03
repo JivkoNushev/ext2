@@ -35,7 +35,7 @@ void Ext2::load_ext2()
     std::cout << "Loading ext2 from: " << this->get_device_path() << '\n';
     this->m_sb = SuperBlock(this->get_device_path());
 
-    this->m_bgdt = BlockGroupDescriptorTable(this->m_sb, 0);
+    this->m_bgdt = BlockGroupDescriptorTable(this->m_sb);
     this->m_bgdt.read(this->get_device_path());
 
     this->m_it = InodeTable(this->m_sb, this->m_bgdt, this->get_device_path());

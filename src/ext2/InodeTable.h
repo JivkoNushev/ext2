@@ -42,10 +42,10 @@ private:
     const BlockGroupDescriptorTable& m_bgdt;
     const char* const& m_device_path;
 
-    std::optional<uint16_t> m_currently_loaded_group_idx = std::nullopt;
+    std::optional<uint16_t> m_loaded_group = std::nullopt;
 
 // ---------------- PRIVATE METHODS ----------------
-    bool load_group(uint16_t group_idx);
+    bool load_group(uint16_t group);
     void free();
     void copy_from(const InodeTable& other);
     void move_from(InodeTable&& other);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SuperBlock.h"
 #include "BlockGroupDescriptor.h"
+#include "SuperBlock.h"
 
 class BlockGroupDescriptorTable : Block
 {
@@ -11,7 +11,7 @@ public:
 
 // ---------------- CONSTRUCTORS/DESTRUCTORS ----------------
     BlockGroupDescriptorTable();
-    BlockGroupDescriptorTable(const SuperBlock& sb, uint16_t bg);
+    BlockGroupDescriptorTable(const SuperBlock& sb);
     ~BlockGroupDescriptorTable();
 
     BlockGroupDescriptorTable(const BlockGroupDescriptorTable& table);
