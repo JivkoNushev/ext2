@@ -3,11 +3,11 @@
 #include "SuperBlock.h"
 
 SuperBlock::SuperBlock(uint32_t offset) :
-    Block(sizeof(this->m_fields), offset)
+    Block(sizeof(SuperBlock::Fields), offset)
 {}
 
 SuperBlock::SuperBlock(const char* device_path, uint32_t offset) :
-    Block(sizeof(this->m_fields), offset)
+    Block(sizeof(SuperBlock::Fields), offset)
 {
     this->read(device_path);
 

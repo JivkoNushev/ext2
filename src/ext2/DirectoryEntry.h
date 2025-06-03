@@ -23,6 +23,7 @@ public:
 
 struct LinkedDirectoryEntry : public DirectoryEntry
 {
+public:
     uint32_t inode = 0;
     uint16_t rec_len = 0;
     uint8_t  name_len = 0;

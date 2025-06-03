@@ -138,7 +138,7 @@ void Ext2::print_tree(uint32_t inode_idx, const utils::string& prefix, bool is_l
         const LinkedDirectoryEntry& entry = entries[i];
 
         // skip current and parent entries
-        if (0 != std::strcmp((const char*)entry.name, ".") && 0 != std::strcmp((const char*)entry.name, ".."))
+        if (0 != utils::strcmp((const char*)entry.name, ".") && 0 != utils::strcmp((const char*)entry.name, ".."))
         {
             children_to_display.push_back(entry);
         }

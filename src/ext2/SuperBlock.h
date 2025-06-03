@@ -73,7 +73,7 @@ public:
     SuperBlock(uint32_t offset = SuperBlock::OFFSET);
     SuperBlock(const char* device_path, uint32_t offset = SuperBlock::OFFSET);
     ~SuperBlock() = default;
- 
+
 // ---------------- PUBLIC METHODS ----------------
     void print_fields() const;
 
