@@ -9,14 +9,16 @@
 
 class FileWriteContext;
 
-struct NewDirEntry {
+struct NewDirEntry
+{
     uint32_t inode_num;
     const utils::string& name;
     uint8_t file_type;
     uint16_t required_len() const;
 };
 
-struct FileCreationCommitInfo {
+struct FileCreationCommitInfo
+{
     bool is_directory;
     const Inode& new_inode;
     uint32_t new_inode_num;

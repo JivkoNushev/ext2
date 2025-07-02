@@ -64,6 +64,7 @@ public:
         }
 
         this->m_fs->write_block(out_block_num, this->m_block_buffer, this->m_block_size);
+
         this->m_total_blocks_used++;
 
         if (this->m_block_bitmap_data)
@@ -449,17 +450,21 @@ uint32_t Ext2::allocate(uint32_t preferred_group, uint16_t items_per_group, uint
         uint32_t current_group_idx = (preferred_group + i) % num_bgs;
         const BlockGroupDescriptor& out_group_desc = this->m_bgdt.get_bgd(current_group_idx); 
         if (out_group_desc.m_fields.bg_free_inodes_count == 0) continue;
+
         out_bitmap_num = out_group_desc.m_fields.bg_inode_bitmap;
         out_bitmap = new uint8_t[block_size];
+
         try
         {
             this->read_block(out_bitmap_num, out_bitmap, block_size);
+
             int free_bit_idx = utils::find_first_free_bit(out_bitmap, block_size);
             if (free_bit_idx != -1 && (uint32_t)(free_bit_idx) < items_per_group)
             {
                 utils::set_bit(out_bitmap, free_bit_idx);
                 return (current_group_idx * items_per_group) + free_bit_idx;
             }
+
             delete[] out_bitmap;
             out_bitmap = nullptr;
         }
@@ -477,16 +482,16 @@ uint32_t Ext2::allocate_inode(uint32_t parent_inode, uint8_t*& out_inode_bitmap,
 {
     uint32_t preferred_group = (parent_inode - 1) /  this->m_sb.m_fields.s_inodes_per_group;
     uint32_t inode_num = this->allocate(preferred_group, this->m_sb.m_fields.s_inodes_per_group, out_inode_bitmap, out_inode_bitmap_num);
-    if(0 == inode_num) return 0;
-    return inode_num + 1;
+
+    return 0 == inode_num ? 0 : inode_num + 1;
 }
 
 uint32_t Ext2::allocate_block(uint32_t inode_num, uint8_t*& out_block_bitmap_data, uint32_t& out_block_bitmap_num)
 {
     uint32_t preferred_group = (inode_num - 1) / this->m_sb.m_fields.s_inodes_per_group;
     uint32_t block_num = this->allocate(preferred_group, this->m_sb.m_fields.s_blocks_per_group, out_block_bitmap_data, out_block_bitmap_num);
-    if(0 == block_num) return 0;
-    return block_num + this->m_sb.m_fields.s_first_data_block;
+
+    return 0 == block_num ? 0 : block_num + this->m_sb.m_fields.s_first_data_block;
 }
 
 void Ext2::init_directory_block(Inode& inode, uint32_t inode_num, uint32_t parent_inode_num)
@@ -850,6 +855,7 @@ uint32_t Ext2::get_entry_data_block_and_number(const Inode& parent_inode, const 
 
         utils::vector<LinkedDirectoryEntry> current_block_entries;
         this->read_directory_block(data_block, current_block_entries);
+
         for(size_t j = 0; j < current_block_entries.size(); j++)
         {
             const LinkedDirectoryEntry& entry = current_block_entries[j];
@@ -875,6 +881,7 @@ bool Ext2::has_entry_children(const Inode& entry_inode)
         uint8_t len = std::min(child.name_len, (uint8_t)(DirectoryEntry::MAX_NAME_LEN - 1));
         utils::memcpy(temp_name, (const char*)(child.name), len);
         temp_name[len] = '\0';
+
         if (0 != utils::strcmp(temp_name, ".") && 0 != utils::strcmp(temp_name, ".."))
             return true;
     }
@@ -893,10 +900,15 @@ void Ext2::remove_entry_children(const utils::string& path, const Inode& entry_i
         uint8_t len = std::min(child.name_len, (uint8_t)(DirectoryEntry::MAX_NAME_LEN - 1));
         utils::memcpy(temp_name, (const char*)(child.name), len);
         temp_name[len] = '\0';
-        if (utils::strcmp(temp_name, ".") != 0 && utils::strcmp(temp_name, "..") != 0)
+
+        if (0 != utils::strcmp(temp_name, ".") && 0 != utils::strcmp(temp_name, ".."))
         {
             utils::string child_full_path = path;
-            if (child_full_path.back() != '/') child_full_path += "/";
+            if (child_full_path.back() != '/') 
+            {
+                child_full_path += "/";
+            }
+
             child_full_path += temp_name;
             this->remove_file(child_full_path, true);
         }
